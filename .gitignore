@@ -3,3 +3,6 @@
 /tmp/
 tests/.denylist.local.txt
 __pycache__/
+skills/game-baseline/templates/redot/build/
+Thumbs.db
+.DS_Store

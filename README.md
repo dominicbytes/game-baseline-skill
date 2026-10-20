@@ -80,6 +80,9 @@ must carry it, that settings keys named in the docs are registered in the templa
 file contains local paths or AI attribution. `python tests/check_skill.py --self-test` checks the
 lint's own scanners.
 
+`tools/maintainer/` holds optional maintainer scripts for B04, B07, B13, B15, B16 and B17. They
+need a Windows desktop, OBS and ffmpeg.
+
 ## Relationship to game-accessibility-skill
 
 This skill deliberately overlaps with

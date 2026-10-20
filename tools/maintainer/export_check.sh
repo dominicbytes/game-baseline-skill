@@ -5,13 +5,14 @@
 # Usage:
 #   REDOT_BIN=<redot editor executable> tools/maintainer/export_check.sh <export templates .tpz> <scratch dir>
 #
-# Everything is written under <scratch dir>; the real user app-data folder is never touched.
+# Everything is written to a new folder <scratch dir>/baseline-export-check, which must not exist
+# yet: the script never deletes anything. The real user app-data folder is never touched.
 # Optional: DENYLIST=<file> lists terms (one per line, # comments) that must not appear in the exe.
 set -euo pipefail
 
 : "${REDOT_BIN:?Set REDOT_BIN to a Redot 26.3 editor executable}"
 TPZ="${1:?Pass the official export templates .tpz}"
-SCRATCH="${2:?Pass a scratch directory}"
+PARENT="${2:?Pass a scratch directory}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PROJECT="$ROOT/skills/game-baseline/templates/redot"
 EXE_NAME="BaselineDemo.exe"
@@ -20,7 +21,15 @@ winpath() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else pr
 fail() { echo "FAIL $*" >&2; exit 1; }
 pass() { echo "PASS $*"; }
 
-rm -rf "$SCRATCH"
+# A fresh folder for this run. An existing one is never reused or deleted.
+SCRATCH="$PARENT/baseline-export-check"
+if [ -e "$SCRATCH" ]; then
+	echo "export_check: $SCRATCH already exists; remove it first if it is an old run:" >&2
+	echo "  rm -rf \"$SCRATCH\"" >&2
+	exit 1
+fi
+mkdir -p "$PARENT"
+mkdir "$SCRATCH"
 mkdir -p "$SCRATCH/export_appdata" "$SCRATCH/build" "$SCRATCH/run_appdata"
 
 # Self-contained editors ignore APPDATA and would use their own data folder.
