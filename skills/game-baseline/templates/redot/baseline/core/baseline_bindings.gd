@@ -4,6 +4,7 @@ extends RefCounted
 ## {"type": "key", "physical_keycode": int} or {"type": "mouse", "button_index": int}.
 ## Actions starting with "ui_" are menu navigation and are never remapped.
 
+## Physical keys the player may not bind (Esc opens the pause menu).
 const RESERVED_KEYS: Array[int] = [KEY_ESCAPE]
 ## InputEvent device id that matches every keyboard and mouse.
 const ALL_DEVICES := -1
@@ -18,10 +19,14 @@ static func gameplay_actions() -> Array[String]:
 	return actions
 
 
-## Converts a key or mouse event to a plain dictionary, or {} for other events.
+## Converts a key or mouse event to a plain dictionary, or {} for events the
+## remap system cannot represent (keycode-only keys, keys with modifiers, gamepad).
 static func to_dict(event: InputEvent) -> Dictionary:
-	if event is InputEventKey and event.physical_keycode != KEY_NONE:
-		return {"type": "key", "physical_keycode": int(event.physical_keycode)}
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		if key.physical_keycode == KEY_NONE or key.shift_pressed or key.ctrl_pressed or key.alt_pressed or key.meta_pressed:
+			return {}
+		return {"type": "key", "physical_keycode": int(key.physical_keycode)}
 	if event is InputEventMouseButton:
 		return {"type": "mouse", "button_index": int(event.button_index)}
 	return {}
@@ -42,7 +47,7 @@ static func from_dict(binding: Variant) -> InputEvent:
 			return key
 		"mouse":
 			var index: Variant = binding.get("button_index")
-			if not (index is int or index is float) or int(index) <= 0:
+			if not (index is int or index is float) or int(index) < 1 or int(index) > 32:
 				return null
 			var button := InputEventMouseButton.new()
 			button.button_index = int(index)
@@ -92,14 +97,16 @@ static func sanitize(value: Variant, defaults: Dictionary) -> Variant:
 	return clean
 
 
-## Replaces the key and mouse events of each action; other events (for example
-## gamepad) are left alone.
+## Replaces the remappable key and mouse events of each action. Events the
+## remap system cannot represent (gamepad, Esc, keycode-only keys, modifier
+## combos) are left alone.
 static func apply(bindings: Dictionary) -> void:
 	for action: String in bindings:
 		if not InputMap.has_action(action):
 			continue
 		for event in InputMap.action_get_events(action):
-			if event is InputEventKey or event is InputEventMouseButton:
+			var binding := to_dict(event)
+			if not binding.is_empty() and not is_reserved(binding):
 				InputMap.action_erase_event(action, event)
 		for binding: Dictionary in bindings[action]:
 			var event := from_dict(binding)
@@ -116,9 +123,13 @@ static func find_conflict(bindings: Dictionary, action: String, binding: Diction
 
 
 ## Returns a copy with binding set in slot of action. With swap, the action that
-## held binding gets this slot's previous binding instead (or loses it).
+## held binding gets this slot's previous binding instead (or loses it). If
+## binding already sits in another slot of the same action, it moves.
 static func assign(bindings: Dictionary, action: String, slot: int, binding: Dictionary, swap: bool) -> Dictionary:
 	var result: Dictionary = bindings.duplicate(true)
+	if slot < 0:
+		push_error("BaselineBindings: negative slot %d for %s" % [slot, action])
+		return result
 	var events: Array = result.get(action, [])
 	var previous: Dictionary = events[slot] if slot < events.size() else {}
 	if swap:
@@ -130,9 +141,14 @@ static func assign(bindings: Dictionary, action: String, slot: int, binding: Dic
 				other_events.remove_at(index)
 			else:
 				other_events[index] = previous
+	var placed := slot
 	if slot < events.size():
 		events[slot] = binding
 	else:
 		events.append(binding)
+		placed = events.size() - 1
+	for i in range(events.size() - 1, -1, -1):
+		if i != placed and events[i] == binding:
+			events.remove_at(i)
 	result[action] = events
 	return result
