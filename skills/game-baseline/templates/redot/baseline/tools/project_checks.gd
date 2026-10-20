@@ -1,8 +1,11 @@
 class_name BaselineProjectChecks
 extends RefCounted
 ## Static Audit checks on a Redot project's settings and files. Each result is
-## {"id": "B01", "ok": bool, "message": String}. Settings missing from
-## project.godot count as the engine's defaults.
+## {"id": "B01", "ok": bool, "manual": bool, "message": String}. A result with
+## "manual" true could not be checked statically (the project does not use the
+## template's autoloads): it is neither a pass nor a failure, and the items it
+## names must be verified by hand. Settings missing from project.godot count as
+## the engine's defaults.
 ## Command line: res://baseline/tools/check_project.gd
 
 ## Autoloads the Redot template registers.
@@ -18,6 +21,10 @@ const CENTERED_POSITION := 1
 const VSYNC_ENABLED := 1
 const MAX_FPS := 60
 const WINDOWS_PLATFORM := "Windows Desktop"
+## Items the template's autoloads provide.
+const AUTOLOAD_ITEMS := "B05/B11/B13/B15"
+## Appended to every B10 failure: what the static check can and cannot see.
+const B10_NOTE := " (every action not starting with ui_ counts as gameplay; actions created only in code are not seen by this static check)"
 
 
 ## Runs every check on the project in project_dir.
@@ -162,7 +169,7 @@ static func _check_export(project_dir: String) -> Array[Dictionary]:
 static func _check_actions(actions: Dictionary) -> Array[Dictionary]:
 	var results: Array[Dictionary] = []
 	if actions.is_empty():
-		results.append(_result("B10", false, "", "No gameplay input actions in the InputMap"))
+		results.append(_result("B10", false, "", "No gameplay input actions in the InputMap" + B10_NOTE))
 		return results
 	var unbound: Array[String] = []
 	var logical: Array[String] = []
@@ -176,15 +183,16 @@ static func _check_actions(actions: Dictionary) -> Array[Dictionary]:
 		if binds_esc(events):
 			on_esc.append(action)
 	results.append(_result("B10", unbound.is_empty(), "Every gameplay action has a key or mouse binding",
-			"Gameplay actions without a key or mouse binding: %s" % ", ".join(unbound)))
+			"Gameplay actions without a key or mouse binding: %s%s" % [", ".join(unbound), B10_NOTE]))
 	results.append(_result("B10", logical.is_empty(), "Key bindings use physical keys",
-			"Key bindings without physical_keycode: %s" % ", ".join(logical)))
+			"Key bindings without physical_keycode: %s%s" % [", ".join(logical), B10_NOTE]))
 	results.append(_result("B10", on_esc.is_empty(), "No gameplay action is bound to Esc",
-			"Gameplay actions bound to Esc, which opens the pause menu: %s" % ", ".join(on_esc)))
+			"Gameplay actions bound to Esc, which opens the pause menu: %s%s" % [", ".join(on_esc), B10_NOTE]))
 	return results
 
 
-## B11, B13 and B15: the template's autoloads, which provide those items.
+## B05, B11, B13 and B15: the template's autoloads, which provide those items.
+## A project without either autoload gets a manual result instead of a failure.
 static func _check_autoloads(project: ConfigFile) -> Array[Dictionary]:
 	var results: Array[Dictionary] = []
 	var missing: Array[String] = []
@@ -192,10 +200,10 @@ static func _check_autoloads(project: ConfigFile) -> Array[Dictionary]:
 		if not str(project.get_value("autoload", autoload, "")).begins_with("*"):
 			missing.append(autoload)
 	if missing.size() == TEMPLATE_AUTOLOADS.size():
-		results.append(_result("B11/B13/B15", false, "",
-				"Not using the Redot template: verify B05, B11, B13 and B15 by hand."))
+		results.append(_manual(AUTOLOAD_ITEMS,
+				"Not using the Redot template: verify these by hand (see verification.md)"))
 	else:
-		results.append(_result("B11/B13/B15", missing.is_empty(), "BaselineSettings and BaselineFlow autoloads are registered",
+		results.append(_result(AUTOLOAD_ITEMS, missing.is_empty(), "BaselineSettings and BaselineFlow autoloads are registered",
 				"Autoloads not registered as singletons: %s" % ", ".join(missing)))
 	return results
 
@@ -215,10 +223,22 @@ static func _check_release(project: ConfigFile) -> Array[Dictionary]:
 static func _check_main_scene(project: ConfigFile, project_dir: String) -> Array[Dictionary]:
 	var results: Array[Dictionary] = []
 	var scene := str(setting(project, "application/run/main_scene"))
-	var exists := scene.begins_with("uid://") or ResourceLoader.exists(_project_path(project_dir, scene))
-	results.append(_result("General", scene != "" and exists, "Main scene is set (%s)" % scene,
+	results.append(_result("General", main_scene_exists(scene, project_dir), "Main scene is set (%s)" % scene,
 			"Main scene is not set or missing (set application/run/main_scene)"))
 	return results
+
+
+## True when scene names a file in the project at project_dir. A uid:// path is
+## resolved through the running project's UID cache, so it only counts there.
+static func main_scene_exists(scene: String, project_dir: String = "res://") -> bool:
+	if scene == "":
+		return false
+	if scene.begins_with("uid://"):
+		if project_dir != "res://":
+			return false
+		var id := ResourceUID.text_to_id(scene)
+		return id != ResourceUID.INVALID_ID and ResourceUID.has_id(id)
+	return ResourceLoader.exists(_project_path(project_dir, scene))
 
 
 ## Bus names of layout in bus order. Bus 0 is always Master.
@@ -259,4 +279,9 @@ static func _is_int(value: Variant, expected: int) -> bool:
 
 
 static func _result(id: String, ok: bool, pass_message: String, fail_message: String) -> Dictionary:
-	return {"id": id, "ok": ok, "message": pass_message if ok else fail_message}
+	return {"id": id, "ok": ok, "manual": false, "message": pass_message if ok else fail_message}
+
+
+## A check that cannot run statically: not a pass, not a failure.
+static func _manual(id: String, message: String) -> Dictionary:
+	return {"id": id, "ok": false, "manual": true, "message": message}
