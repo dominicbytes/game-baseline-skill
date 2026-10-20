@@ -3,6 +3,7 @@ extends Node
 ## a validator and an optional apply function; setting a key applies only that key.
 ## Key names match the game-accessibility skill's registry where they overlap.
 
+## Emitted after set_value stores a new value for key.
 signal changed(key: String)
 
 const PATH := "user://settings.json"
@@ -18,13 +19,15 @@ const WINDOW_SIZE_PRESETS: Array[Vector2i] = [
 const AUTO_WINDOW_SIZE := Vector2i.ZERO
 const MIN_WINDOW_SIZE := Vector2i(640, 360)
 
+## Feature switches that decide which optional keys are registered.
 var config: BaselineConfig = preload("res://baseline/baseline_config.tres")
-## Number of times each key was applied. Tests read this.
+## Test support: number of times each key was applied.
 var apply_counts: Dictionary = {}
 
 var _keys: Dictionary = {}
 var _values: Dictionary = {}
 var _stored: Dictionary = {}
+var _builtin: Array[String] = []
 var _default_bindings: Dictionary = {}
 var _save_timer: Timer
 var _dirty := false
@@ -57,20 +60,25 @@ func register_key(key: String, default_value: Variant, validate: Callable, apply
 		_apply(key)
 
 
+## True when key has been registered.
 func has_key(key: String) -> bool:
 	return _keys.has(key)
 
 
+## Current value of key (a copy for Dictionary and Array values), or null for an unknown key.
 func get_value(key: String) -> Variant:
 	if not _keys.has(key):
 		push_error("BaselineSettings: unknown key " + key)
 		return null
-	var value: Variant = _values[key]
-	return value.duplicate(true) if value is Dictionary else value
+	return _copy(_values[key])
 
 
+## Default value of key (a copy for Dictionary and Array values), or null for an unknown key.
 func get_default(key: String) -> Variant:
-	return _keys[key]["default"]
+	if not _keys.has(key):
+		push_error("BaselineSettings: unknown key " + key)
+		return null
+	return _copy(_keys[key]["default"])
 
 
 ## Validates, stores and applies one key. Returns false when the value is invalid.
@@ -95,19 +103,20 @@ func set_value(key: String, value: Variant) -> bool:
 func reset_category(prefix: String) -> void:
 	for key: String in _keys:
 		if key.begins_with(prefix):
-			var default_value: Variant = _keys[key]["default"]
-			set_value(key, default_value.duplicate(true) if default_value is Dictionary else default_value)
+			set_value(key, _copy(_keys[key]["default"]))
 
 
-## Writes pending changes now. Called on quit.
+## Writes pending changes now. Called on quit. Stored keys that are not
+## registered (yet) are written back unchanged.
 func flush() -> void:
 	_save_timer.stop()
 	if not _dirty:
 		return
-	var data := {}
+	var data: Dictionary = _stored.duplicate(true)
 	for key: String in _values:
 		var value: Variant = _values[key]
-		data[key] = [value.x, value.y] if value is Vector2i else value
+		data[key] = [value.x, value.y] if value is Vector2i else _copy(value)
+	_stored = data.duplicate(true)
 	var error := BaselineFile.write_text(PATH, JSON.stringify(data, "\t"))
 	if error != OK:
 		push_warning("BaselineSettings: could not save settings (%s)" % error_string(error))
@@ -122,28 +131,31 @@ func load_from_disk() -> void:
 		_values[key] = _stored_or_default(key)
 
 
+## Pushes every key's current value into the engine.
 func apply_all() -> void:
 	for key: String in _keys:
 		_apply(key)
 
 
-## Back to a clean state with no settings file. Tests only.
+## Test support: back to a clean state with no settings file and only the
+## built-in keys registered.
 func reset_for_tests() -> void:
 	_save_timer.stop()
 	_dirty = false
 	BaselineFile.delete_all(PATH)
 	_stored = {}
 	for key: String in _keys.keys():
-		if not key in _builtin_keys():
+		if not key in _builtin:
 			_keys.erase(key)
 			_values.erase(key)
 	for key: String in _keys:
-		var default_value: Variant = _keys[key]["default"]
-		_values[key] = default_value.duplicate(true) if default_value is Dictionary else default_value
+		_values[key] = _copy(_keys[key]["default"])
 	apply_all()
 	apply_counts.clear()
 
 
+## Largest preset that fits in 85% of screen, or a 16:9 size that fits when
+## no preset does (never below MIN_WINDOW_SIZE).
 static func default_window_size(screen: Vector2i) -> Vector2i:
 	var limit := Vector2(screen) * 0.85
 	var best := AUTO_WINDOW_SIZE
@@ -169,6 +181,8 @@ static func window_sizes_for_screen(screen: Vector2i) -> Array[Vector2i]:
 	return sizes
 
 
+## Engine.max_fps for a stored choice. Match display uses refresh_rate, or 60
+## when the refresh rate is unknown. 0 means unlimited.
 static func resolve_max_fps(choice: int, refresh_rate: float) -> int:
 	if choice == FPS_MATCH_DISPLAY:
 		return roundi(refresh_rate) if refresh_rate > 0.0 else 60
@@ -185,22 +199,14 @@ func _register_builtin_keys() -> void:
 	register_key("display.window_mode", "windowed", _validate_window_mode, _apply_window_mode)
 	register_key("display.window_size", AUTO_WINDOW_SIZE, _validate_window_size, _apply_window_size)
 	register_key("display.vsync", true, _validate_bool, _apply_vsync)
+	# The owner requires a 60 FPS cap by default; Match display is offered for high-refresh screens.
 	register_key("display.max_fps", 60, _validate_fps, _apply_max_fps)
 	register_key("game.input.bindings", _default_bindings.duplicate(true), _validate_bindings, BaselineBindings.apply)
 	if config.enable_mouse_look:
 		register_key("input.look_sensitivity", 1.0, _validate_sensitivity)
 		register_key("game.input.invert_x", false, _validate_bool)
 		register_key("input.invert_y", false, _validate_bool)
-
-
-func _builtin_keys() -> Array[String]:
-	var keys: Array[String] = ["audio.master", "audio.music", "audio.sfx", "display.window_mode",
-		"display.window_size", "display.vsync", "display.max_fps", "game.input.bindings"]
-	if config.enable_voice:
-		keys.append_array(["audio.voice", "subtitles.dialogue"])
-	if config.enable_mouse_look:
-		keys.append_array(["input.look_sensitivity", "game.input.invert_x", "input.invert_y"])
-	return keys
+	_builtin.assign(_keys.keys())
 
 
 func _read_file() -> void:
@@ -212,12 +218,18 @@ func _read_file() -> void:
 
 
 func _stored_or_default(key: String) -> Variant:
-	var default_value: Variant = _keys[key]["default"]
 	if _stored.has(key):
-		var checked: Variant = _keys[key]["validate"].call(_stored[key])
+		var checked: Variant = _keys[key]["validate"].call(_copy(_stored[key]))
 		if checked != null:
 			return checked
-	return default_value.duplicate(true) if default_value is Dictionary else default_value
+	return _copy(_keys[key]["default"])
+
+
+## Deep copy for Dictionary and Array values; anything else is returned as is.
+static func _copy(value: Variant) -> Variant:
+	if value is Dictionary or value is Array:
+		return value.duplicate(true)
+	return value
 
 
 func _apply(key: String) -> void:
@@ -291,13 +303,19 @@ func _apply_window_mode(mode: String) -> void:
 			if current != DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
 				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
 		_:
+			# A maximized or minimized window already counts as windowed.
 			if current == DisplayServer.WINDOW_MODE_FULLSCREEN or current == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
 				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 				_resize_window(_values.get("display.window_size", AUTO_WINDOW_SIZE))
 
 
 func _apply_window_size(size: Vector2i) -> void:
-	if not _has_window() or DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
+	if not _has_window():
+		return
+	var current := DisplayServer.window_get_mode()
+	if current == DisplayServer.WINDOW_MODE_MAXIMIZED:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	elif current != DisplayServer.WINDOW_MODE_WINDOWED:
 		return
 	_resize_window(size)
 
@@ -305,6 +323,8 @@ func _apply_window_size(size: Vector2i) -> void:
 func _resize_window(size: Vector2i) -> void:
 	var screen := DisplayServer.window_get_current_screen()
 	var usable := DisplayServer.screen_get_usable_rect(screen)
+	if usable.size.x <= 0 or usable.size.y <= 0:
+		return
 	var target := size if size != AUTO_WINDOW_SIZE else default_window_size(usable.size)
 	# A saved size may come from a bigger monitor.
 	target = target.min(usable.size)

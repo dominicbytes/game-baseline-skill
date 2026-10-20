@@ -18,7 +18,11 @@ static func write_text(path: String, text: String) -> Error:
 		return FileAccess.get_open_error()
 	file.store_string(text)
 	file.flush()
+	var write_error := file.get_error()
 	file.close()
+	if write_error != OK:
+		DirAccess.remove_absolute(_absolute(temp_path))
+		return write_error
 	if FileAccess.file_exists(path):
 		var copy_error := DirAccess.copy_absolute(_absolute(path), _absolute(path + BACKUP_SUFFIX))
 		if copy_error != OK and log_warnings:

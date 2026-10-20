@@ -112,3 +112,15 @@ func test_registered_game_key_uses_same_file() -> void:
 	BaselineSettings.flush()
 	BaselineSettings.load_from_disk()
 	expect_eq(BaselineSettings.get_value("game.difficulty_hint"), "off", "custom key persisted")
+
+
+func test_flush_keeps_keys_that_are_not_registered_yet() -> void:
+	BaselineFile.write_text(BaselineSettings.PATH, JSON.stringify({"game.later_key": "kept"}))
+	BaselineSettings.load_from_disk()
+	BaselineSettings.set_value("audio.sfx", 0.3)
+	BaselineSettings.flush()
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(BaselineSettings.PATH))
+	expect(data is Dictionary, "file is a JSON object")
+	if data is Dictionary:
+		expect_eq(data.get("game.later_key"), "kept", "unregistered key kept")
+		expect_eq(data.get("audio.sfx"), 0.3, "new value written")
