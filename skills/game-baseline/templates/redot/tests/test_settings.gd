@@ -61,12 +61,10 @@ func test_corrupt_values_fall_back_to_defaults() -> void:
 func test_unparseable_file_does_not_crash() -> void:
 	BaselineSettings.set_value("audio.master", 0.3)
 	BaselineSettings.flush()
-	BaselineFile.log_warnings = false
 	var file := FileAccess.open(BaselineSettings.PATH, FileAccess.WRITE)
 	file.store_string("{{{ not json")
 	file.close()
 	BaselineSettings.load_from_disk()
-	BaselineFile.log_warnings = true
 	expect_eq(BaselineSettings.get_value("audio.master"), 0.7, "defaults")
 
 
@@ -141,7 +139,5 @@ func test_corrupt_main_file_falls_back_to_backup() -> void:
 	BaselineFile.write_text(BaselineSettings.PATH, JSON.stringify({"audio.master": 0.4}))
 	BaselineFile.write_text(BaselineSettings.PATH, "{{{ not json")
 	expect(FileAccess.file_exists(BaselineSettings.PATH + BaselineFile.BACKUP_SUFFIX), "backup written")
-	BaselineFile.log_warnings = false
 	BaselineSettings.load_from_disk()
-	BaselineFile.log_warnings = true
 	expect_eq(BaselineSettings.get_value("audio.master"), 0.4, "value from backup")

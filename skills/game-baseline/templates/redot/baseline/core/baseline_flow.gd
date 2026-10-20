@@ -7,9 +7,6 @@ signal paused_changed(is_paused: bool)
 
 const GAMEPLAY_GROUP := &"baseline_gameplay"
 const FADE_TIME := 0.25
-## Loaded when needed, not referenced by class: the menu calls BaselineFlow, and
-## that script cycle keeps scripts alive at exit ("resources still in use").
-const PAUSE_MENU_PATH := "res://baseline/ui/pause_menu.gd"
 
 var config: BaselineConfig = preload("res://baseline/baseline_config.tres")
 ## Mouse mode gameplay wants while it runs, e.g. captured while aiming.
@@ -30,6 +27,7 @@ var _music: BaselineMusic
 var _subtitle: BaselineSubtitle
 var _quitting := false
 var _pause_after_transition := false
+var _theme: Theme
 
 
 func _ready() -> void:
@@ -55,6 +53,13 @@ func _ready() -> void:
 	BaselineFile.remove_stale_temp(BaselineSave.PATH)
 
 
+## The shared menu Theme, built on first use.
+func get_theme() -> Theme:
+	if _theme == null:
+		_theme = BaselineTheme.build()
+	return _theme
+
+
 ## True while the scene tree is paused.
 func is_paused() -> bool:
 	return get_tree().paused
@@ -77,7 +82,7 @@ func pause(reason: String = "menu") -> void:
 	get_tree().paused = true
 	set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	_music.duck(true)
-	push_screen((load(PAUSE_MENU_PATH) as GDScript).new())
+	push_screen(BaselinePauseMenu.new())
 	print("[baseline] paused (%s)" % reason)
 	paused_changed.emit(true)
 

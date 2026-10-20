@@ -6,12 +6,10 @@ const PATH := "user://test_file.txt"
 func before_each() -> void:
 	super()
 	BaselineFile.delete_all(PATH)
-	BaselineFile.log_warnings = false
 
 
 func after_each() -> void:
 	BaselineFile.delete_all(PATH)
-	BaselineFile.log_warnings = true
 
 
 func _always_valid(_text: String) -> bool:

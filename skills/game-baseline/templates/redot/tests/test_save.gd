@@ -4,12 +4,10 @@ extends BaselineTestCase
 func before_each() -> void:
 	super()
 	BaselineSave.delete()
-	BaselineFile.log_warnings = false
 
 
 func after_each() -> void:
 	BaselineSave.delete()
-	BaselineFile.log_warnings = true
 
 
 func test_no_save_at_start() -> void:

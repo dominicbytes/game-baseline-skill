@@ -7,7 +7,7 @@ extends Control
 func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	theme = BaselineTheme.get_theme()
+	theme = BaselineFlow.get_theme()
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 

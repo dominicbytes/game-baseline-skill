@@ -6,9 +6,6 @@ extends RefCounted
 const TEMP_SUFFIX := ".tmp"
 const BACKUP_SUFFIX := ".bak"
 
-## Tests switch this off when they corrupt files on purpose.
-static var log_warnings := true
-
 
 ## Writes text atomically. Returns OK or the error that stopped the write.
 static func write_text(path: String, text: String) -> Error:
@@ -25,13 +22,14 @@ static func write_text(path: String, text: String) -> Error:
 		return write_error
 	if FileAccess.file_exists(path):
 		var copy_error := DirAccess.copy_absolute(_absolute(path), _absolute(path + BACKUP_SUFFIX))
-		if copy_error != OK and log_warnings:
-			push_warning("BaselineFile: could not back up %s (%s)" % [path, error_string(copy_error)])
+		if copy_error != OK:
+			print("[baseline] could not back up %s (%s)" % [path, error_string(copy_error)])
 	return DirAccess.rename_absolute(_absolute(temp_path), _absolute(path))
 
 
 ## Returns the main file's text, or the backup's when the main file is missing
-## or fails is_valid. Returns "" when neither is usable.
+## or fails is_valid. Returns "" when neither is usable. A corrupt file is
+## expected and recoverable, so it is printed, not reported as a warning.
 static func read_text(path: String, is_valid: Callable) -> String:
 	for candidate: String in [path, path + BACKUP_SUFFIX]:
 		if not FileAccess.file_exists(candidate):
@@ -39,8 +37,7 @@ static func read_text(path: String, is_valid: Callable) -> String:
 		var text := FileAccess.get_file_as_string(candidate)
 		if is_valid.call(text):
 			return text
-		if log_warnings:
-			push_warning("BaselineFile: ignoring unreadable %s" % candidate)
+		print("[baseline] ignoring unreadable %s" % candidate)
 	return ""
 
 

@@ -14,7 +14,9 @@ var _cancel: Button
 
 ## Pushes a new dialog onto BaselineFlow's screen stack and returns it.
 static func ask(message: String, confirm_text: String, cancel_text: String = "Cancel") -> BaselineConfirm:
-	var dialog := BaselineConfirm.new()
+	# new(), not BaselineConfirm.new(): code that names its own class makes a
+	# script cycle, and cycles can leak at exit.
+	var dialog: BaselineConfirm = new()
 	dialog._message = message
 	dialog._confirm_text = confirm_text
 	dialog._cancel_text = cancel_text

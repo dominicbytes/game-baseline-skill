@@ -6,7 +6,7 @@ var _first_button: Button
 
 
 func _ready() -> void:
-	theme = BaselineTheme.get_theme()
+	theme = BaselineFlow.get_theme()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	var background := ColorRect.new()
 	background.color = Color(0.05, 0.06, 0.09)

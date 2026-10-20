@@ -2,21 +2,14 @@ class_name BaselineTheme
 extends RefCounted
 ## Shared theme: readable base font size and a focus outline that is visible
 ## on every control (never shown by colour or animation alone).
+## Stateless: BaselineFlow builds it once and shares it via get_theme().
 
 const FOCUS_COLOR := Color(1.0, 0.82, 0.2)
 const FONT_SIZE := 24
 
-static var _theme: Theme
 
-
-## The shared Theme, built on first use.
-static func get_theme() -> Theme:
-	if _theme == null:
-		_theme = _build()
-	return _theme
-
-
-static func _build() -> Theme:
+## Builds a new Theme. Use BaselineFlow.get_theme() for the shared one.
+static func build() -> Theme:
 	var theme := Theme.new()
 	theme.default_font_size = FONT_SIZE
 	var focus := StyleBoxFlat.new()
