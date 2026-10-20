@@ -6,7 +6,7 @@ template's demo game.
 - **Game:** Baseline Demo (the template itself)
 - **Engine and version:** Redot 26.3-stable, GL Compatibility renderer
 - **Build checked:** 1.0.0, Windows x86_64 release export with the official 26.3-stable templates, 2026-10-20
-- **Checked by:** automated headless tests (97), background-window screenshots at 4 sizes, an
+- **Checked by:** automated headless tests (104), background-window screenshots at 4 sizes, an
   exported-build check script, OBS Studio 32.1.2 capture runs, and live window checks on Windows 10
 
 Statuses: **pass / fail / blocked / n/a / not tested**.
