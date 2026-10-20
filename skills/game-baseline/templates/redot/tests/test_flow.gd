@@ -273,3 +273,31 @@ func test_subtitle_waits_while_paused_below_the_menus() -> void:
 	BaselineFlow.resume()
 	await get_tree().create_timer(0.5, true).timeout
 	expect(not BaselineFlow.subtitle_label().visible, "line hides once its time has run")
+
+
+func test_focus_returns_to_pause_options_after_back() -> void:
+	_start_game()
+	await frames(2)
+	BaselineFlow.pause()
+	await frames(2)
+	var pause_menu := BaselineFlow.top_screen() as BaselinePauseMenu
+	var options := pause_menu.find_button("Options")
+	options.grab_focus()
+	await frames(1)
+	options.pressed.emit()
+	await frames(2)
+	expect(BaselineFlow.top_screen() is BaselineOptionsMenu, "options open")
+	await _tap("ui_cancel")
+	expect_eq(BaselineFlow.top_screen(), pause_menu, "back on the pause menu")
+	expect_eq(get_viewport().gui_get_focus_owner(), options, "focus back on Options")
+
+
+func test_arrow_down_moves_focus_on_pause_menu() -> void:
+	_start_game()
+	await frames(2)
+	BaselineFlow.pause()
+	await frames(2)
+	var pause_menu := BaselineFlow.top_screen() as BaselinePauseMenu
+	expect_eq(get_viewport().gui_get_focus_owner(), pause_menu.find_button("Resume"), "Resume focused first")
+	await _tap("ui_down")
+	expect_eq(get_viewport().gui_get_focus_owner(), pause_menu.find_button("Options"), "down moves to Options")

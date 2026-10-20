@@ -5,12 +5,18 @@ func test_defaults() -> void:
 	expect_eq(BaselineSettings.get_value("audio.master"), 0.7, "master")
 	expect_eq(BaselineSettings.get_value("audio.music"), 0.6, "music")
 	expect_eq(BaselineSettings.get_value("audio.sfx"), 0.8, "sfx")
-	expect_eq(BaselineSettings.get_value("audio.voice"), 1.0, "voice (C02 enabled in demo)")
 	expect_eq(BaselineSettings.get_value("display.vsync"), true, "vsync on")
 	expect_eq(BaselineSettings.get_value("display.max_fps"), 60, "60 cap")
 	expect_eq(BaselineSettings.get_value("display.window_mode"), "windowed", "windowed")
-	expect_eq(BaselineSettings.get_value("input.look_sensitivity"), 1.0, "sensitivity (C01)")
-	expect_eq(BaselineSettings.get_value("subtitles.dialogue"), true, "subtitles on")
+	var config := BaselineFlow.config
+	expect_eq(BaselineSettings.has_key("audio.voice"), config.enable_voice, "voice volume only with C02")
+	expect_eq(BaselineSettings.has_key("subtitles.dialogue"), config.enable_voice, "subtitles only with C02")
+	expect_eq(BaselineSettings.has_key("input.look_sensitivity"), config.enable_mouse_look, "sensitivity only with C01")
+	if config.enable_voice:
+		expect_eq(BaselineSettings.get_value("audio.voice"), 1.0, "voice (C02)")
+		expect_eq(BaselineSettings.get_value("subtitles.dialogue"), true, "subtitles on")
+	if config.enable_mouse_look:
+		expect_eq(BaselineSettings.get_value("input.look_sensitivity"), 1.0, "sensitivity (C01)")
 
 
 func test_volume_applies_to_bus_in_db_and_mutes_at_zero() -> void:

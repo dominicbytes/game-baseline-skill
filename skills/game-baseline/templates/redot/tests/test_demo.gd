@@ -78,6 +78,8 @@ func test_click_on_world_pings() -> void:
 
 
 func test_mouse_look_while_aiming_respects_invert_and_sensitivity() -> void:
+	if not BaselineFlow.config.enable_mouse_look:
+		return
 	BaselineSettings.set_value("input.look_sensitivity", 2.0)
 	BaselineSettings.set_value("game.input.invert_x", false)
 	BaselineSettings.set_value("input.invert_y", true)

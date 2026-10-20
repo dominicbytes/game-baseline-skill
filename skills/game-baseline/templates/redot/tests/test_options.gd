@@ -24,8 +24,10 @@ func _key(physical: Key) -> void:
 
 func test_tabs_present() -> void:
 	await _open()
-	for text in ["Audio", "Display", "Controls", "Gameplay"]:
+	for text in ["Audio", "Display", "Controls"]:
 		expect(menu.find_button(text) != null, "%s tab" % text)
+	var config := BaselineFlow.config
+	expect_eq(menu.find_button("Gameplay") != null, config.enable_mouse_look or config.enable_voice, "Gameplay tab only with mouse-look or voice")
 	expect(menu.find_button("Back") != null, "Back button")
 
 
@@ -37,7 +39,7 @@ func test_audio_slider_label_and_mute() -> void:
 	expect_eq(BaselineSettings.get_value("audio.music"), 0.0, "setting follows slider")
 	tab.slider_for("audio.music").value = 0.29
 	expect_eq(tab.value_label_for("audio.music").text, "29%", "rounded percent")
-	expect(tab.slider_for("audio.voice") != null, "voice slider with C02")
+	expect_eq(tab.slider_for("audio.voice") != null, BaselineFlow.config.enable_voice, "voice slider only with C02 voice")
 
 
 func test_window_size_only_in_windowed_mode() -> void:
@@ -127,7 +129,13 @@ func test_capture_ignores_wheel_and_double_click() -> void:
 func test_controls_follow_action_order() -> void:
 	await _open("controls")
 	var panel: BaselineControlsPanel = menu.current_tab()
-	expect_eq(panel.action_rows().slice(0, 3), ["move_left", "move_right", "move_up"] as Array[String], "config order")
+	var available := BaselineBindings.gameplay_actions()
+	var expected: Array[String] = []
+	for action: String in BaselineFlow.config.action_order:
+		if action in available and not action in expected:
+			expected.append(action)
+	expect_eq(panel.action_rows().slice(0, expected.size()), expected, "config order first")
+	expect_eq(panel.action_rows().size(), available.size(), "every gameplay action listed once")
 
 
 func test_options_from_pause_menu_and_back() -> void:
@@ -150,18 +158,31 @@ func test_options_from_pause_menu_and_back() -> void:
 
 
 func test_gameplay_tab_follows_settings_and_resets() -> void:
+	var voice := BaselineFlow.config.enable_voice
+	var look := BaselineFlow.config.enable_mouse_look
 	await _open("gameplay")
 	var tab: Control = menu.current_tab()
-	expect(tab is BaselineOptionsGameplayTab, "gameplay tab open")
-	BaselineSettings.set_value("subtitles.dialogue", false)
-	BaselineSettings.set_value("input.look_sensitivity", 2.0)
+	expect_eq(tab is BaselineOptionsGameplayTab, voice or look, "gameplay tab only with mouse-look or voice")
+	if not tab is BaselineOptionsGameplayTab:
+		return
+	expect_eq(menu.find_button("Subtitles") != null, voice, "Subtitles switch only with voice")
+	expect_eq(menu.find_button("Invert vertical look") != null, look, "invert only with mouse-look")
+	if voice:
+		BaselineSettings.set_value("subtitles.dialogue", false)
+	if look:
+		BaselineSettings.set_value("input.look_sensitivity", 2.0)
+		BaselineSettings.set_value("input.invert_y", true)
 	await frames(1)
-	expect_eq(menu.find_button("Subtitles").button_pressed, false, "switch follows setting")
+	if voice:
+		expect_eq(menu.find_button("Subtitles").button_pressed, false, "switch follows setting")
 	menu.find_button("Reset gameplay").pressed.emit()
 	await frames(1)
-	expect_eq(BaselineSettings.get_value("subtitles.dialogue"), true, "subtitles reset")
-	expect_eq(BaselineSettings.get_value("input.look_sensitivity"), 1.0, "sensitivity reset")
-	expect_eq(menu.find_button("Subtitles").button_pressed, true, "switch refreshed")
+	if voice:
+		expect_eq(BaselineSettings.get_value("subtitles.dialogue"), true, "subtitles reset")
+		expect_eq(menu.find_button("Subtitles").button_pressed, true, "switch refreshed")
+	if look:
+		expect_eq(BaselineSettings.get_value("input.look_sensitivity"), 1.0, "sensitivity reset")
+		expect_eq(BaselineSettings.get_value("input.invert_y"), false, "invert reset")
 
 
 func test_reset_controls_asks_first() -> void:

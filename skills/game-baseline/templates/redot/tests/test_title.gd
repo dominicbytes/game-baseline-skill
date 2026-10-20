@@ -44,11 +44,12 @@ func test_continue_shown_with_save() -> void:
 
 func test_version_label() -> void:
 	await _open_title()
+	var expected := "Version %s" % ProjectSettings.get_setting("application/config/version")
 	var found := false
 	for node in title.find_children("*", "Label", true, false):
-		if (node as Label).text == "Version 1.0.0":
+		if (node as Label).text == expected:
 			found = true
-	expect(found, "version label shows 1.0.0")
+	expect(found, "version label shows '%s'" % expected)
 
 
 func test_new_game_over_save_confirms() -> void:
@@ -107,3 +108,17 @@ func test_credits_include_engine_licence() -> void:
 		text += (node as Label).text
 	expect(text.contains("Redot"), "mentions Redot")
 	expect(text.contains("Permission is hereby granted"), "includes the MIT licence text")
+
+
+func test_focus_returns_to_credits_after_back() -> void:
+	await _open_title()
+	var credits := _button("Credits")
+	credits.grab_focus()
+	await frames(1)
+	credits.pressed.emit()
+	await frames(2)
+	expect(BaselineFlow.top_screen() is BaselineCreditsScreen, "credits open")
+	(BaselineFlow.top_screen() as BaselineScreen).find_button("Back").pressed.emit()
+	await frames(2)
+	expect(not BaselineFlow.has_screens(), "credits closed")
+	expect_eq(get_viewport().gui_get_focus_owner(), credits, "focus back on Credits")
