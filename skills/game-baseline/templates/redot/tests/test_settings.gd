@@ -48,6 +48,8 @@ func test_persistence_round_trip() -> void:
 
 
 func test_corrupt_values_fall_back_to_defaults() -> void:
+	BaselineSettings.set_value("audio.master", 0.3)
+	BaselineSettings.flush()
 	var stored := {"audio.master": "very loud", "display.max_fps": 999, "audio.music": 0.2}
 	BaselineFile.write_text(BaselineSettings.PATH, JSON.stringify(stored))
 	BaselineSettings.load_from_disk()
@@ -124,3 +126,20 @@ func test_flush_keeps_keys_that_are_not_registered_yet() -> void:
 	if data is Dictionary:
 		expect_eq(data.get("game.later_key"), "kept", "unregistered key kept")
 		expect_eq(data.get("audio.sfx"), 0.3, "new value written")
+
+
+func test_window_size_round_trip() -> void:
+	expect(BaselineSettings.set_value("display.window_size", Vector2i(1366, 768)), "set")
+	BaselineSettings.flush()
+	BaselineSettings.load_from_disk()
+	expect_eq(BaselineSettings.get_value("display.window_size"), Vector2i(1366, 768), "window size persisted")
+
+
+func test_corrupt_main_file_falls_back_to_backup() -> void:
+	BaselineFile.write_text(BaselineSettings.PATH, JSON.stringify({"audio.master": 0.4}))
+	BaselineFile.write_text(BaselineSettings.PATH, "{{{ not json")
+	expect(FileAccess.file_exists(BaselineSettings.PATH + BaselineFile.BACKUP_SUFFIX), "backup written")
+	BaselineFile.log_warnings = false
+	BaselineSettings.load_from_disk()
+	BaselineFile.log_warnings = true
+	expect_eq(BaselineSettings.get_value("audio.master"), 0.4, "value from backup")

@@ -27,12 +27,23 @@ timeout 600 "$REDOT_BIN" --headless --audio-driver Dummy --path "$PROJECT" \
 status=${PIPESTATUS[0]}
 set -e
 
+# Import problems (missing classes, broken resources) often explain a failed run.
+show_import_log() {
+	echo "run_redot_tests: last 40 lines of the import log:" >&2
+	tail -n 40 "$WORK/import.log" >&2
+}
+
 if grep -qE 'SCRIPT ERROR|^ERROR:|Parse Error|WARNING:|leaked' "$WORK/test.log"; then
 	echo "run_redot_tests: engine errors or warnings in the log (see above)" >&2
+	show_import_log
 	exit 1
 fi
 if ! grep -q '^RESULT ' "$WORK/test.log"; then
 	echo "run_redot_tests: runner did not finish" >&2
+	show_import_log
 	exit 1
+fi
+if [ "$status" -ne 0 ]; then
+	show_import_log
 fi
 exit "$status"
