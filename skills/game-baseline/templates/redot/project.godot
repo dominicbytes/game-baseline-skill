@@ -16,6 +16,7 @@ buses/default_bus_layout="res://default_bus_layout.tres"
 [autoload]
 
 BaselineSettings="*res://baseline/core/baseline_settings.gd"
+BaselineFlow="*res://baseline/core/baseline_flow.gd"
 
 [debug]
 
