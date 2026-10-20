@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BaselineConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://baseline/baseline_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+game_title = "Baseline Demo"
+game_scene_path = "res://demo/demo_game.tscn"
+title_scene_path = "res://baseline/ui/title_screen.tscn"
+title_music_path = "res://demo/assets/music_loop.wav"
+enable_mouse_look = true
+enable_voice = true
+action_names = {
+"interact": "Save at the save point",
+"move_down": "Move down",
+"move_left": "Move left",
+"move_right": "Move right",
+"move_up": "Move up",
+"primary": "Ping"
+}
+credits_text = "Baseline Demo\nA template that ships the basics players expect."

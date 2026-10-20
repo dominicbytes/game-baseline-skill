@@ -1,0 +1,32 @@
+config_version=5
+
+[application]
+
+config/name="Baseline Demo"
+config/version="1.0.0"
+run/main_scene="res://baseline/ui/title_screen.tscn"
+config/features=PackedStringArray("26.3", "GL Compatibility")
+run/max_fps=60
+config/icon="res://icon.svg"
+
+[audio]
+
+buses/default_bus_layout="res://default_bus_layout.tres"
+
+[debug]
+
+file_logging/enable_file_logging.pc=true
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/initial_position_type=1
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/vsync/vsync_mode=1
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

@@ -1,0 +1,5 @@
+.godot/
+/build/
+/tmp/
+tests/.denylist.local.txt
+__pycache__/
