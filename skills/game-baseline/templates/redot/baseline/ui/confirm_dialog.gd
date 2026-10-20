@@ -37,8 +37,10 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 16)
 	box.add_child(row)
 	_cancel = make_button(_cancel_text, _answer.bind(false))
-	row.add_child(_cancel)
-	row.add_child(make_button(_confirm_text, _answer.bind(true)))
+	var confirm := make_button(_confirm_text, _answer.bind(true))
+	for button: Button in [_cancel, confirm]:
+		button.custom_minimum_size = Vector2(200.0, 48.0)
+		row.add_child(button)
 
 
 ## Cancel, so a stray Enter never confirms.

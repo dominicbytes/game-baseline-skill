@@ -18,20 +18,26 @@ func _ready() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
-	var box := VBoxContainer.new()
-	box.custom_minimum_size.x = 360.0
-	box.add_theme_constant_override("separation", 12)
-	center.add_child(box)
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 12)
+	center.add_child(outer)
 
 	var heading := Label.new()
 	heading.text = BaselineFlow.config.game_title
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	heading.add_theme_font_size_override("font_size", 56)
-	box.add_child(heading)
+	# Wide enough for most titles on one line; longer titles still wrap.
+	heading.custom_minimum_size.x = 1000.0
+	outer.add_child(heading)
 	var gap := Control.new()
 	gap.custom_minimum_size.y = 24.0
-	box.add_child(gap)
+	outer.add_child(gap)
+	var box := VBoxContainer.new()
+	box.custom_minimum_size.x = 360.0
+	box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.add_theme_constant_override("separation", 12)
+	outer.add_child(box)
 
 	if BaselineSave.has_save():
 		_first_button = _add_button(box, "Continue", BaselineFlow.continue_game)
