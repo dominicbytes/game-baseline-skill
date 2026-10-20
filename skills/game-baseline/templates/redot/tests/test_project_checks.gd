@@ -36,9 +36,7 @@ func _write(file: String, text: String) -> void:
 
 func test_template_passes_every_check() -> void:
 	var results := BaselineProjectChecks.run()
-	# The Windows preset (B07) arrives with export_presets.cfg.
-	var failures := _failures(results).filter(func(line: String) -> bool: return not line.begins_with("B07 "))
-	expect_eq(failures, [], "failing checks")
+	expect_eq(_failures(results), [], "failing checks")
 	var ids := {}
 	for result in results:
 		ids[result["id"]] = true
