@@ -16,6 +16,9 @@ const PING_SECONDS := 0.6
 const HOP_HEIGHT := 24.0
 const HOP_SECONDS := 0.12
 const GRID_STEP := 64.0
+## Fills the space around the play area on wider or taller windows.
+const OUTSIDE_COLOR := Color(0.04, 0.05, 0.07)
+const OUTSIDE_MARGIN := 4096.0
 
 ## Seconds played, restored from the save.
 var elapsed := 0.0
@@ -43,6 +46,10 @@ var _saved_tween: Tween
 
 func _ready() -> void:
 	add_to_group(BaselineFlow.GAMEPLAY_GROUP)
+	# Keeps the play area centred on ultrawide and other non-16:9 windows.
+	var camera := Camera2D.new()
+	camera.position = PLAY_AREA.get_center()
+	add_child(camera)
 	var data := BaselineSave.load_data()
 	set_player_position(Vector2(_number(data.get("x"), START_POSITION.x), _number(data.get("y"), START_POSITION.y)))
 	elapsed = maxf(_number(data.get("elapsed"), 0.0), 0.0)
@@ -158,6 +165,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _draw() -> void:
+	draw_rect(PLAY_AREA.grow(OUTSIDE_MARGIN), OUTSIDE_COLOR)
 	draw_rect(PLAY_AREA, Color(0.09, 0.11, 0.15))
 	var line := Color(1.0, 1.0, 1.0, 0.06)
 	for x in range(0, int(PLAY_AREA.size.x) + 1, int(GRID_STEP)):
@@ -229,15 +237,17 @@ func _build_hud() -> void:
 	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(hud)
 
+	# Time and control prompts sit top left, clear of the subtitle line at the bottom.
+	var left := VBoxContainer.new()
+	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left.add_theme_constant_override("separation", 8)
+	left.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 16)
+	hud.add_child(left)
 	_time_label = _make_label()
-	_time_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, 16)
-	hud.add_child(_time_label)
-
+	left.add_child(_time_label)
 	_prompt_label = _make_label()
 	_prompt_label.add_theme_font_size_override("font_size", 20)
-	_prompt_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 16)
-	_prompt_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	hud.add_child(_prompt_label)
+	left.add_child(_prompt_label)
 
 	var corner := VBoxContainer.new()
 	corner.alignment = BoxContainer.ALIGNMENT_BEGIN

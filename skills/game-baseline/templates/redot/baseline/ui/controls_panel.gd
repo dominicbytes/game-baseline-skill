@@ -8,7 +8,9 @@ extends VBoxContainer
 const BINDINGS_KEY := "game.input.bindings"
 const SLOTS := 2
 const EMPTY_SLOT := "—"
-const CAPTURE_TEXT := "Press a key or mouse button (Esc cancels)"
+## Shown in the slot while it waits; short, so it fits the slot unclipped.
+const CAPTURE_TEXT := "Press a key…"
+const HINT_TEXT := "Select a slot, then press a key or mouse button. Esc cancels."
 const WHEEL_BUTTONS: Array[MouseButton] = [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]
 
 var _actions: Array[String] = []
@@ -19,6 +21,10 @@ var _capture_slot := -1
 
 func _ready() -> void:
 	add_theme_constant_override("separation", 8)
+	var hint := Label.new()
+	hint.text = HINT_TEXT
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(hint)
 	var available := BaselineBindings.gameplay_actions()
 	for action: String in BaselineFlow.config.action_order:
 		if action in available and not action in _actions:
