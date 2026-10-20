@@ -11,6 +11,7 @@ func test_dict_round_trip() -> void:
 	expect_eq(BaselineBindings.to_dict(BaselineBindings.from_dict(W)), W, "key")
 	expect_eq(BaselineBindings.to_dict(BaselineBindings.from_dict(LMB)), LMB, "mouse")
 	expect(BaselineBindings.from_dict({"type": "pad"}) == null, "unknown type rejected")
+	expect_eq(BaselineBindings.from_dict(W).device, -1, "matches every device")
 
 
 func test_esc_is_reserved() -> void:

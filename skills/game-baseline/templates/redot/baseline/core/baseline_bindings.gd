@@ -5,6 +5,8 @@ extends RefCounted
 ## Actions starting with "ui_" are menu navigation and are never remapped.
 
 const RESERVED_KEYS: Array[int] = [KEY_ESCAPE]
+## InputEvent device id that matches every keyboard and mouse.
+const ALL_DEVICES := -1
 
 
 ## Gameplay actions in project order.
@@ -36,6 +38,7 @@ static func from_dict(binding: Variant) -> InputEvent:
 				return null
 			var key := InputEventKey.new()
 			key.physical_keycode = int(code)
+			key.device = ALL_DEVICES
 			return key
 		"mouse":
 			var index: Variant = binding.get("button_index")
@@ -43,6 +46,7 @@ static func from_dict(binding: Variant) -> InputEvent:
 				return null
 			var button := InputEventMouseButton.new()
 			button.button_index = int(index)
+			button.device = ALL_DEVICES
 			return button
 	return null
 
