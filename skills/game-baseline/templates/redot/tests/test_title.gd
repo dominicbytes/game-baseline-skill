@@ -80,7 +80,7 @@ func test_quit_on_title_has_no_confirmation() -> void:
 	var quit_calls := [0]
 	BaselineFlow.quit_impl = func() -> void: quit_calls[0] += 1
 	_button("Quit").pressed.emit()
-	await frames(4)
+	await get_tree().create_timer(BaselineFlow.QUIT_DRAIN_TIME + 0.1, true).timeout
 	expect_eq(quit_calls[0], 1, "quit without dialog")
 
 

@@ -105,7 +105,7 @@ func test_close_request_runs_clean_quit() -> void:
 	var quit_calls := [0]
 	BaselineFlow.quit_impl = func() -> void: quit_calls[0] += 1
 	BaselineFlow.notification(NOTIFICATION_WM_CLOSE_REQUEST)
-	await frames(4)
+	await get_tree().create_timer(BaselineFlow.QUIT_DRAIN_TIME + 0.1, true).timeout
 	expect_eq(quit_calls[0], 1, "close request goes through quit_game")
 
 

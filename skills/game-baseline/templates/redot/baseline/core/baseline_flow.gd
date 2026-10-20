@@ -7,6 +7,9 @@ signal paused_changed(is_paused: bool)
 
 const GAMEPLAY_GROUP := &"baseline_gameplay"
 const FADE_TIME := 0.25
+## Seconds quit_game waits after stopping sounds. The audio thread releases
+## stopped playbacks a few frames later; quitting sooner leaks them.
+const QUIT_DRAIN_TIME := 0.25
 
 var config: BaselineConfig = preload("res://baseline/baseline_config.tres")
 ## Mouse mode gameplay wants while it runs, e.g. captured while aiming.
@@ -224,8 +227,7 @@ func quit_game() -> void:
 		for player: Node in get_tree().root.find_children("*", type, true, false):
 			player.call("stop")
 			player.set("stream", null)
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await get_tree().create_timer(QUIT_DRAIN_TIME, true, false, true).timeout
 	quit_impl.call()
 
 

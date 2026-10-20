@@ -56,6 +56,8 @@ func _ready() -> void:
 			test_case.queue_free()
 			await get_tree().process_frame
 	BaselineTestCase.reset_world()
+	# Let the audio thread release stopped sounds before quitting, as quit_game does.
+	await get_tree().create_timer(BaselineFlow.QUIT_DRAIN_TIME, true, false, true).timeout
 	if passed + failed == 0:
 		failed = 1
 		print("FAIL no tests ran (check --only)")
