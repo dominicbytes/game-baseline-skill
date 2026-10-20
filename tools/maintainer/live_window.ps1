@@ -46,7 +46,8 @@ public static class LiveWin {
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
-    [DllImport("user32.dll")] public static extern uint SendInput(uint n, INPUT[] inputs, int size);
+    [DllImport("user32.dll")] public static extern int GetSystemMetrics(int i);
+    [DllImport("user32.dll", SetLastError = true)] public static extern uint SendInput(uint n, INPUT[] inputs, int size);
     [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, IntPtr extra);
 }
 "@
@@ -107,11 +108,16 @@ switch ($Action) {
         [void](Bring-Forward $h)
         $before = New-Object LiveWin+POINT; [void][LiveWin]::GetCursorPos([ref]$before)
         $pt = New-Object LiveWin+POINT; $pt.X = $X; $pt.Y = $Y; [void][LiveWin]::ClientToScreen($h, [ref]$pt)
-        [void][LiveWin]::SetCursorPos($pt.X, $pt.Y); Start-Sleep -Milliseconds 150
-        $inputs = New-Object LiveWin+INPUT[] 2
-        $inputs[0].type = 0; $inputs[0].mi.dwFlags = 0x0002   # MOUSEEVENTF_LEFTDOWN
-        $inputs[1].type = 0; $inputs[1].mi.dwFlags = 0x0004   # MOUSEEVENTF_LEFTUP
-        [void][LiveWin]::SendInput(2, $inputs, [Runtime.InteropServices.Marshal]::SizeOf([type][LiveWin+INPUT]))
+        # Absolute move, then press and release, as one input stream (like a real mouse).
+        $vx = [LiveWin]::GetSystemMetrics(76); $vy = [LiveWin]::GetSystemMetrics(77)
+        $vw = [LiveWin]::GetSystemMetrics(78); $vh = [LiveWin]::GetSystemMetrics(79)
+        $ax = [int](($pt.X - $vx) * 65535 / ($vw - 1)); $ay = [int](($pt.Y - $vy) * 65535 / ($vh - 1))
+        $inputs = New-Object LiveWin+INPUT[] 3
+        $inputs[0].type = 0; $inputs[0].mi.dx = $ax; $inputs[0].mi.dy = $ay; $inputs[0].mi.dwFlags = 0x0001 -bor 0x8000 -bor 0x4000   # MOVE | ABSOLUTE | VIRTUALDESK
+        $inputs[1].type = 0; $inputs[1].mi.dwFlags = 0x0002   # LEFTDOWN
+        $inputs[2].type = 0; $inputs[2].mi.dwFlags = 0x0004   # LEFTUP
+        $sent = [LiveWin]::SendInput(3, $inputs, [Runtime.InteropServices.Marshal]::SizeOf([type][LiveWin+INPUT]))
+        if ($sent -ne 3) { throw "SendInput sent $sent of 3 events (error $([Runtime.InteropServices.Marshal]::GetLastWin32Error()))" }
         Start-Sleep -Milliseconds 150
         [void][LiveWin]::SetCursorPos($before.X, $before.Y)
         "real click at client $X,$Y (screen $($pt.X),$($pt.Y)); cursor restored"
