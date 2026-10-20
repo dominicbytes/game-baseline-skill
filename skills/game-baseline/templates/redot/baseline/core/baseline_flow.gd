@@ -10,6 +10,11 @@ const FADE_TIME := 0.25
 ## Seconds quit_game waits after stopping sounds. The audio thread releases
 ## stopped playbacks a few frames later; quitting sooner leaks them.
 const QUIT_DRAIN_TIME := 0.25
+## User argument for bounded automated runs: `-- --baseline-quit-after=<seconds>`
+## quits through quit_game() after that many seconds, so sounds stop and drain
+## first. Prefer it over the engine's --quit-after, which skips quit_game() and
+## leaks any audio stream still playing at exit.
+const QUIT_AFTER_ARG := "--baseline-quit-after="
 
 var config: BaselineConfig = preload("res://baseline/baseline_config.tres")
 ## Mouse mode gameplay wants while it runs, e.g. captured while aiming.
@@ -31,6 +36,7 @@ var _subtitle: BaselineSubtitle
 var _quitting := false
 var _pause_after_transition := false
 var _theme: Theme
+var _quit_timer: Timer
 
 
 func _ready() -> void:
@@ -54,6 +60,7 @@ func _ready() -> void:
 	_music = BaselineMusic.new()
 	add_child(_music)
 	BaselineFile.remove_stale_temp(BaselineSave.PATH)
+	_setup_quit_after(OS.get_cmdline_user_args())
 
 
 ## The shared menu Theme, built on first use.
@@ -247,6 +254,9 @@ func reset_for_tests() -> void:
 	set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	_music.stop_music()
 	_subtitle.hide_now()
+	if _quit_timer != null:
+		_quit_timer.queue_free()
+		_quit_timer = null
 	_reset_impls()
 
 
@@ -289,6 +299,37 @@ func _focus_screen(screen: Control) -> void:
 		target = screen.find_next_valid_focus()
 	if target != null:
 		target.grab_focus()
+
+
+## Seconds from a --baseline-quit-after=<seconds> user argument, or -1 when it
+## is absent or not a positive number.
+func _parse_quit_after(args: PackedStringArray) -> float:
+	for arg in args:
+		if arg.begins_with(QUIT_AFTER_ARG):
+			var text := arg.trim_prefix(QUIT_AFTER_ARG)
+			if text.is_valid_float() and text.to_float() > 0.0:
+				return text.to_float()
+	return -1.0
+
+
+## Starts a timer that calls quit_game() when args ask for a bounded run.
+## Returns the timer, or null when args have no valid --baseline-quit-after.
+func _setup_quit_after(args: PackedStringArray) -> Timer:
+	var seconds := _parse_quit_after(args)
+	if seconds < 0.0:
+		return null
+	if _quit_timer != null:
+		_quit_timer.queue_free()
+	_quit_timer = Timer.new()
+	_quit_timer.name = "QuitAfter"
+	_quit_timer.process_mode = Node.PROCESS_MODE_ALWAYS
+	_quit_timer.one_shot = true
+	_quit_timer.wait_time = seconds
+	_quit_timer.autostart = true
+	_quit_timer.timeout.connect(quit_game)
+	add_child(_quit_timer)
+	print("[baseline] quitting after %s s (%s)" % [seconds, QUIT_AFTER_ARG.trim_suffix("=")])
+	return _quit_timer
 
 
 func _reset_impls() -> void:

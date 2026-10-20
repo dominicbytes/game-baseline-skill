@@ -153,3 +153,27 @@ func test_pause_menu_return_to_title_needs_confirmation() -> void:
 	await frames(2)
 	expect(changes.is_empty(), "cancel keeps playing")
 	expect(get_tree().paused, "still paused")
+
+
+func test_parse_quit_after() -> void:
+	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray()), -1.0, "absent")
+	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray(["--only=test_flow"])), -1.0, "other args only")
+	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray(["--baseline-quit-after=2"])), 2.0, "whole seconds")
+	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray(["--x", "--baseline-quit-after=0.5"])), 0.5, "fractions, among other args")
+	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray(["--baseline-quit-after=soon"])), -1.0, "not a number")
+	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray(["--baseline-quit-after=0"])), -1.0, "zero")
+
+
+func test_quit_after_starts_timer_that_runs_clean_quit() -> void:
+	expect(BaselineFlow._setup_quit_after(PackedStringArray()) == null, "no timer without the argument")
+	var quit_calls := [0]
+	BaselineFlow.quit_impl = func() -> void: quit_calls[0] += 1
+	var timer: Timer = BaselineFlow._setup_quit_after(PackedStringArray(["--baseline-quit-after=0.1"]))
+	expect(timer != null and timer.is_inside_tree(), "timer added")
+	if timer == null:
+		return
+	expect_eq(timer.wait_time, 0.1, "timer length")
+	expect_eq(timer.process_mode, Node.PROCESS_MODE_ALWAYS, "runs while paused")
+	get_tree().paused = true
+	await get_tree().create_timer(0.1 + BaselineFlow.QUIT_DRAIN_TIME + 0.2, true, false, true).timeout
+	expect_eq(quit_calls[0], 1, "timer quits through quit_game")
