@@ -41,6 +41,11 @@ FORBIDDEN: list[tuple[str, re.Pattern[str]]] = [
 	("drive-letter path", re.compile(r"(?<![A-Za-z])[A-Za-z]:[\\/]")),
 	("user folder path", re.compile("Us" + r"ers[\\/]")),
 	("home folder path", re.compile("/ho" + "me/")),
+	# Git Bash and MSYS drive mounts: a slash, one lowercase drive letter, a
+	# slash, then a name. URLs, res:// and relative paths like a/b/c are not
+	# matched: the first slash must not follow a word character, dot, colon or
+	# another slash.
+	("drive mount path", re.compile(r"(?<![\w.:/])/[a-z]/(?=[A-Za-z0-9_])")),
 	(
 		"AI co-author trailer",
 		re.compile("Co-Authored" + r"-By:.*(Cl" + "aude|Co" + "dex|G" + "PT)", re.IGNORECASE),
@@ -133,12 +138,15 @@ def find_forbidden(text: str) -> list[tuple[int, str]]:
 
 
 def load_denylist(text: str) -> list[re.Pattern[str]]:
+	"""One pattern per term. Letters and digits are word characters, underscore
+	is not: a term inside a snake_case name still matches, while a term with a
+	letter or digit attached (acos inside acos2) does not."""
 	patterns = []
 	for line in text.splitlines():
 		word = line.strip()
 		if not word or word.startswith("#"):
 			continue
-		patterns.append(re.compile(r"(?<!\w)" + re.escape(word) + r"(?!\w)", re.IGNORECASE))
+		patterns.append(re.compile(r"(?<![^\W_])" + re.escape(word) + r"(?![^\W_])", re.IGNORECASE))
 	return patterns
 
 
@@ -158,11 +166,13 @@ def read_text(path: Path) -> str | None:
 
 
 def tracked_files() -> list[Path]:
+	"""Tracked and untracked, not ignored. -z keeps non-ASCII names unquoted."""
 	result = subprocess.run(
-		["git", "ls-files", "--cached", "--others", "--exclude-standard"],
-		capture_output=True, text=True, check=True, encoding="utf-8",
+		["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+		capture_output=True, check=True,
 	)
-	return [Path(line) for line in result.stdout.splitlines() if line and Path(line).is_file()]
+	names = result.stdout.decode("utf-8", errors="surrogateescape").split("\0")
+	return [Path(name) for name in names if name and Path(name).is_file()]
 
 
 def markdown_files() -> list[Path]:
@@ -308,6 +318,16 @@ def run_self_test() -> int:
 	expect("https:// is clean", not find_forbidden("see https://example.com/x"))
 	expect("users folder hits", bool(find_forbidden("Us" + "ers/someone/file")))
 	expect("home folder hits", bool(find_forbidden("cd /ho" + "me/someone")))
+	mount = "/" + "c" + "/work/game"
+	expect("drive mount hits", bool(find_forbidden("cd " + mount)) and bool(find_forbidden("(" + mount + ")")))
+	expect("drive mount at line start hits", bool(find_forbidden(mount)))
+	# Joined so the repository's own pre-commit path scan does not see them.
+	expect("https URL is not a mount", not find_forbidden("/".join(["https:", "", "x", "y"])))
+	expect("res:// path is not a mount", not find_forbidden("/".join(["res:", "", "a", "b"])))
+	expect("relative path is not a mount", not find_forbidden("/".join(["docs", "a", "b"])))
+	expect("short relative path is not a mount", not find_forbidden("a/b/c"))
+	dotted = "see " + "/".join([".", "a", "b.md"]) + " and " + "/".join(["..", "x", "y"])
+	expect("dotted relative path is not a mount", not find_forbidden(dotted))
 	expect("trailer hits", bool(find_forbidden("Co-Authored" + "-By: Cl" + "aude <x@y.z>")))
 	expect("generated line hits", bool(find_forbidden("Generated " + "with [Cl" + "aude Code](https://x.y)")))
 	expect("noreply hits", bool(find_forbidden("mail " + _NOREPLY)))
@@ -318,6 +338,12 @@ def run_self_test() -> int:
 	expect("denylist whole word", find_denylisted("I like secretgame a lot", patterns) == [1])
 	expect("denylist phrase", find_denylisted("a\nSECRET TWO here", patterns) == [2])
 	expect("denylist ignores substrings", not find_denylisted("secretgames and xsecretgame", patterns))
+	expect("denylist matches inside snake_case", find_denylisted("var my_secretgame_id", patterns) == [1])
+	expect("denylist matches at snake_case edges", find_denylisted("secretgame_x\nx_secretgame", patterns) == [1, 2])
+	expect("denylist digits are word characters", not find_denylisted("secretgame2 and 2secretgame", patterns))
+	trig = load_denylist("acos\n")
+	expect("denylist acos2 is not acos", not find_denylisted("var a := acos2(y, x)", trig))
+	expect("denylist acos still matches", find_denylisted("var a := acos(y)", trig) == [1])
 	expect("denylist ignores comment lines", not find_denylisted("comment", patterns))
 	expect("denylist returns only line numbers", all(isinstance(n, int) for n in find_denylisted("secretgame", patterns)))
 
