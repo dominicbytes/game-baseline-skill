@@ -87,12 +87,8 @@ func pause(reason: String = "menu") -> void:
 func resume() -> void:
 	if not is_paused():
 		return
-	_screens.clear()
-	get_tree().paused = false
-	set_mouse_mode(gameplay_mouse_mode)
-	_music.duck(false)
+	_end_pause()
 	print("[baseline] resumed")
-	paused_changed.emit(false)
 
 
 ## Sets the mouse mode now and remembers it in requested_mouse_mode.
@@ -217,9 +213,22 @@ func _notification(what: int) -> void:
 
 
 ## Runs at full black: unpauses, so the new scene starts running, then swaps.
+## A swap from a paused menu (Return to Title, or a game's own Restart) also
+## closes the menus, unducks the music and restores the mouse, as resume() does.
 func _swap_scene(path: String) -> void:
-	get_tree().paused = false
+	if is_paused():
+		_end_pause()
 	change_scene_impl.call(path)
+
+
+## Closes every menu screen, unpauses, restores the gameplay mouse mode and
+## the music volume, and announces the resume.
+func _end_pause() -> void:
+	_screens.clear()
+	get_tree().paused = false
+	set_mouse_mode(gameplay_mouse_mode)
+	_music.duck(false)
+	paused_changed.emit(false)
 
 
 func _end_transition() -> void:

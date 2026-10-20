@@ -199,6 +199,32 @@ func test_return_to_title_keeps_gameplay_frozen_during_the_fade() -> void:
 	expect(not get_tree().paused, "unpaused after the swap")
 
 
+func test_change_scene_from_a_paused_menu_cleans_up_the_pause() -> void:
+	BaselineFlow.play_music(Fixture.silent_loop(), 0.0)
+	_start_game()
+	BaselineFlow.set_gameplay_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	await frames(2)
+	BaselineFlow.pause()
+	BaselineFlow.push_screen(BaselineCreditsScreen.new())
+	await get_tree().create_timer(0.4, true).timeout
+	expect(BaselineFlow.music_player().volume_db < -5.0, "music ducked while paused")
+	var signals: Array = []
+	BaselineFlow.paused_changed.connect(func(is_paused: bool) -> void: signals.append(is_paused))
+	var at_swap: Array = []
+	BaselineFlow.change_scene_impl = func(path: String) -> void:
+		at_swap.append([path, get_tree().paused, BaselineFlow.has_screens(), BaselineFlow.requested_mouse_mode])
+	# What a game's own "Restart level" button does.
+	BaselineFlow.change_scene("res://restart.tscn")
+	await get_tree().create_timer(BaselineFlow.FADE_TIME * 0.5, true).timeout
+	expect(get_tree().paused, "still paused while fading out")
+	await get_tree().create_timer(BaselineFlow.FADE_TIME * 2.0, true).timeout
+	expect_eq(at_swap, [["res://restart.tscn", false, false, Input.MOUSE_MODE_CAPTURED]], "unpaused, menus closed and gameplay mouse back before the swap")
+	expect_eq(signals, [false], "paused_changed(false) emitted once")
+	expect(not BaselineFlow.has_screens(), "no screens left")
+	await get_tree().create_timer(0.4, true).timeout
+	expect(absf(BaselineFlow.music_player().volume_db) < 0.5, "music unducked")
+
+
 func test_parse_quit_after() -> void:
 	expect_eq(BaselineQuitAfter.parse(PackedStringArray()), -1.0, "absent")
 	expect_eq(BaselineQuitAfter.parse(PackedStringArray(["--only=test_flow"])), -1.0, "other args only")
@@ -252,6 +278,8 @@ func test_confirm_under_another_screen_answers_once_and_closes() -> void:
 	expect_eq(answers, [false], "answered exactly once")
 	expect(not is_instance_valid(dialog), "dialog closed")
 	expect_eq(BaselineFlow.top_screen(), above, "screen above stays open")
+	var focus := get_viewport().gui_get_focus_owner()
+	expect(focus != null and above.is_ancestor_of(focus), "keyboard focus stays in the screen above")
 	BaselineFlow.pop_screen()
 	await frames(2)
 	expect(not BaselineFlow.has_screens(), "nothing left on the stack")
