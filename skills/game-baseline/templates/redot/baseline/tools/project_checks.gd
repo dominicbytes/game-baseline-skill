@@ -2,10 +2,10 @@ class_name BaselineProjectChecks
 extends RefCounted
 ## Static Audit checks on a Redot project's settings and files. Each result is
 ## {"id": "B01", "ok": bool, "manual": bool, "message": String}. A result with
-## "manual" true could not be checked statically (the project does not use the
-## template's autoloads): it is neither a pass nor a failure, and the items it
-## names must be verified by hand. Settings missing from project.godot count as
-## the engine's defaults.
+## "manual" true could not be settled statically (the project does not use the
+## template's autoloads, or its config still starts the demo): it is neither a
+## pass nor a failure, and what it names must be checked by hand. Settings
+## missing from project.godot count as the engine's defaults.
 ## Command line: res://baseline/tools/check_project.gd
 
 ## Autoloads the Redot template registers.
@@ -21,6 +21,10 @@ const CENTERED_POSITION := 1
 const VSYNC_ENABLED := 1
 const MAX_FPS := 60
 const WINDOWS_PLATFORM := "Windows Desktop"
+## The template's per-game config. Copied projects must edit it.
+const CONFIG_PATH := "res://baseline/baseline_config.tres"
+## A game_scene_path under this folder still starts the template's demo.
+const DEMO_FOLDER := "res://demo/"
 ## Items the template's autoloads provide.
 const AUTOLOAD_ITEMS := "B05/B11/B13/B15"
 ## Appended to every B10 failure: what the static check can and cannot see.
@@ -42,6 +46,7 @@ static func run(project_dir: String = "res://") -> Array[Dictionary]:
 	results.append_array(_check_autoloads(project))
 	results.append_array(_check_release(project))
 	results.append_array(_check_main_scene(project, project_dir))
+	results.append_array(_check_config(project, project_dir))
 	return results
 
 
@@ -119,12 +124,9 @@ static func _check_window(project: ConfigFile) -> Array[Dictionary]:
 ## B02: bus layout with the volume buses and a limiter on Master.
 static func _check_audio(project: ConfigFile, project_dir: String) -> Array[Dictionary]:
 	var results: Array[Dictionary] = []
-	var path := str(setting(project, "audio/buses/default_bus_layout"))
-	var layout: Resource = null
-	var file := _project_path(project_dir, path)
-	if path != "" and ResourceLoader.exists(file):
-		layout = ResourceLoader.load(file)
-	if not layout is AudioBusLayout:
+	var layout := _bus_layout(project, project_dir)
+	if layout == null:
+		var path := str(setting(project, "audio/buses/default_bus_layout"))
 		results.append(_result("B02", false, "", "Bus layout %s does not load (set audio/buses/default_bus_layout)" % path))
 		return results
 	var buses := _bus_names(layout)
@@ -228,6 +230,38 @@ static func _check_main_scene(project: ConfigFile, project_dir: String) -> Array
 	return results
 
 
+## General and C02: the template's config, when the project has it. The game
+## scene must load, and a game scene still in the demo folder is a manual
+## result. With enable_voice on, the bus layout needs a Voice bus.
+static func _check_config(project: ConfigFile, project_dir: String) -> Array[Dictionary]:
+	var results: Array[Dictionary] = []
+	var file := _project_path(project_dir, CONFIG_PATH)
+	if not ResourceLoader.exists(file):
+		return results
+	# Ignore the cache: a copy loaded earlier may differ from the file on disk.
+	var config: Resource = ResourceLoader.load(file, "", ResourceLoader.CACHE_MODE_IGNORE)
+	if config == null:
+		results.append(_result("General", false, "", "%s does not load" % CONFIG_PATH))
+		return results
+	var scene_value: Variant = config.get("game_scene_path")
+	var scene: String = scene_value if scene_value is String else ""
+	if not main_scene_exists(scene, project_dir):
+		results.append(_result("General", false, "",
+				"Game scene does not load (%s; set game_scene_path in %s)" % [scene, CONFIG_PATH]))
+	elif scene.begins_with(DEMO_FOLDER):
+		results.append(_manual("General",
+				"Game scene is the template's demo (%s): set game_scene_path in %s to your game" % [scene, CONFIG_PATH]))
+	else:
+		results.append(_result("General", true, "Game scene loads (%s)" % scene, ""))
+	var voice: Variant = config.get("enable_voice")
+	if voice is bool and voice:
+		var layout := _bus_layout(project, project_dir)
+		var has_voice := layout != null and "Voice" in _bus_names(layout)
+		results.append(_result("C02", has_voice, "Bus layout has a Voice bus (enable_voice is on)",
+				"enable_voice is on but the bus layout has no Voice bus (add one sending to Master, or turn enable_voice off in %s)" % CONFIG_PATH))
+	return results
+
+
 ## True when scene names a file in the project at project_dir. A uid:// path is
 ## resolved through the running project's UID cache, so it only counts there.
 static func main_scene_exists(scene: String, project_dir: String = "res://") -> bool:
@@ -239,6 +273,15 @@ static func main_scene_exists(scene: String, project_dir: String = "res://") -> 
 		var id := ResourceUID.text_to_id(scene)
 		return id != ResourceUID.INVALID_ID and ResourceUID.has_id(id)
 	return ResourceLoader.exists(_project_path(project_dir, scene))
+
+
+## The project's bus layout, or null when it is not set or does not load.
+static func _bus_layout(project: ConfigFile, project_dir: String) -> AudioBusLayout:
+	var path := str(setting(project, "audio/buses/default_bus_layout"))
+	var file := _project_path(project_dir, path)
+	if path == "" or not ResourceLoader.exists(file):
+		return null
+	return ResourceLoader.load(file, "", ResourceLoader.CACHE_MODE_IGNORE) as AudioBusLayout
 
 
 ## Bus names of layout in bus order. Bus 0 is always Master.

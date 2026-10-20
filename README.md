@@ -51,7 +51,8 @@ reusable part is the `baseline/` folder. The full steps are in
 1. Copy `skills/game-baseline/templates/redot/baseline/` into your project (plus
    `default_bus_layout.tres` if you have no bus layout yet).
 2. Apply the project settings and the `Windows Desktop` export preset listed in the guide.
-3. Edit `baseline/baseline_config.tres` for your title, game scene and options.
+3. Edit `baseline/baseline_config.tres`. The shipped file is the demo's (it starts
+   `res://demo/demo_game.tscn`) and must be edited: set your own title, game scene and options.
 4. Set the main scene to `res://baseline/ui/title_screen.tscn`.
 5. Run the static checks:
 

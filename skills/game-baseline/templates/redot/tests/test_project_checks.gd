@@ -2,14 +2,22 @@ extends BaselineTestCase
 
 ## Scratch project for the failing cases, in the run's isolated user data.
 const SCRATCH := "user://project_checks_scratch"
+## The line check_project.gd prints for a config that still starts the demo.
+const DEMO_MANUAL := "MANUAL General Game scene is the template's demo (res://demo/demo_game.tscn): set game_scene_path in res://baseline/baseline_config.tres to your game"
 
 
 func after_each() -> void:
-	if not DirAccess.dir_exists_absolute(SCRATCH):
+	_remove_tree(SCRATCH)
+
+
+func _remove_tree(dir: String) -> void:
+	if not DirAccess.dir_exists_absolute(dir):
 		return
-	for file in DirAccess.get_files_at(SCRATCH):
-		DirAccess.remove_absolute(SCRATCH.path_join(file))
-	DirAccess.remove_absolute(SCRATCH)
+	for sub in DirAccess.get_directories_at(dir):
+		_remove_tree(dir.path_join(sub))
+	for file in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir.path_join(file))
+	DirAccess.remove_absolute(dir)
 
 
 func _failures(results: Array[Dictionary]) -> Array[String]:
@@ -36,21 +44,79 @@ func _key(physical: Key, logical: Key = KEY_NONE) -> InputEventKey:
 
 
 func _write(file: String, text: String) -> void:
-	DirAccess.make_dir_recursive_absolute(SCRATCH)
+	DirAccess.make_dir_recursive_absolute(SCRATCH.path_join(file).get_base_dir())
 	var handle := FileAccess.open(SCRATCH.path_join(file), FileAccess.WRITE)
 	handle.store_string(text)
 	handle.close()
 
 
+## A scratch project for the config checks: a bus layout with buses (after
+## Master), a game.tscn, and baseline_config.tres with config lines when given.
+func _write_project(config: String, buses: Array[String]) -> void:
+	_write("project.godot", "config_version=5\n")
+	var layout := "[gd_resource type=\"AudioBusLayout\" format=3]\n\n[resource]\n"
+	for i in buses.size():
+		layout += "bus/%d/name = &\"%s\"\nbus/%d/send = &\"Master\"\n" % [i + 1, buses[i], i + 1]
+	_write("default_bus_layout.tres", layout)
+	_write("game.tscn", "[gd_scene format=3]\n\n[node name=\"Game\" type=\"Node\"]\n")
+	if config != "":
+		_write("baseline/baseline_config.tres", "[gd_resource type=\"Resource\" script_class=\"BaselineConfig\" format=3]\n\n"
+				+ "[ext_resource type=\"Script\" path=\"res://baseline/baseline_config.gd\" id=\"1\"]\n\n"
+				+ "[resource]\nscript = ExtResource(\"1\")\n" + config)
+
+
+## Status lines of the config checks only.
+func _config_lines(results: Array[Dictionary]) -> Array[String]:
+	var lines: Array[String] = []
+	for result in results:
+		if result["id"] == "C02" or (result["id"] == "General" and "ame scene" in result["message"]):
+			var status := "MANUAL" if result["manual"] else ("PASS" if result["ok"] else "FAIL")
+			lines.append("%s %s %s" % [status, result["id"], result["message"]])
+	return lines
+
+
 func test_template_passes_every_check() -> void:
 	var results := BaselineProjectChecks.run()
 	expect_eq(_failures(results), [], "failing checks")
-	expect_eq(_manuals(results), [], "manual checks")
+	# The template ships the demo's config, so its game scene is a manual line.
+	expect_eq(_manuals(results), [DEMO_MANUAL.trim_prefix("MANUAL ")], "only the demo scene is manual")
 	var ids := {}
 	for result in results:
 		ids[result["id"]] = true
-	for id in ["B01", "B02", "B03", "B07", "B10", "B05/B11/B13/B15", "B17", "General"]:
+	for id in ["B01", "B02", "B03", "B07", "B10", "B05/B11/B13/B15", "B17", "General", "C02"]:
 		expect(ids.has(id), "%s is checked" % id)
+
+
+func test_config_game_scene_must_load() -> void:
+	_write_project("game_scene_path = \"res://missing.tscn\"\n", ["Music", "SFX"])
+	expect_eq(_config_lines(BaselineProjectChecks.run(SCRATCH)),
+			["FAIL General Game scene does not load (res://missing.tscn; set game_scene_path in res://baseline/baseline_config.tres)"], "missing scene fails")
+	_write_project("game_scene_path = \"res://game.tscn\"\n", ["Music", "SFX"])
+	expect_eq(_config_lines(BaselineProjectChecks.run(SCRATCH)), ["PASS General Game scene loads (res://game.tscn)"], "own scene passes")
+
+
+func test_no_config_means_no_config_checks() -> void:
+	_write_project("", ["Music", "SFX"])
+	expect_eq(_config_lines(BaselineProjectChecks.run(SCRATCH)), [], "no config lines")
+
+
+func test_demo_game_scene_is_manual_not_failure() -> void:
+	_write("demo/demo_game.tscn", "[gd_scene format=3]\n\n[node name=\"Demo\" type=\"Node\"]\n")
+	_write_project("game_scene_path = \"res://demo/demo_game.tscn\"\n", ["Music", "SFX"])
+	var results := BaselineProjectChecks.run(SCRATCH)
+	expect_eq(_config_lines(results), [DEMO_MANUAL], "demo scene is manual")
+	expect(not _failures(results).any(func(line: String) -> bool: return "ame scene" in line), "demo scene is not a failure")
+
+
+func test_voice_needs_voice_bus() -> void:
+	var voice_on := "game_scene_path = \"res://game.tscn\"\nenable_voice = true\n"
+	_write_project(voice_on, ["Music", "SFX"])
+	expect("FAIL C02 enable_voice is on but the bus layout has no Voice bus (add one sending to Master, or turn enable_voice off in res://baseline/baseline_config.tres)"
+			in _config_lines(BaselineProjectChecks.run(SCRATCH)), "voice without a Voice bus fails")
+	_write_project(voice_on, ["Music", "SFX", "Voice"])
+	expect("PASS C02 Bus layout has a Voice bus (enable_voice is on)" in _config_lines(BaselineProjectChecks.run(SCRATCH)), "Voice bus passes")
+	_write_project("game_scene_path = \"res://game.tscn\"\nenable_voice = false\n", ["Music", "SFX"])
+	expect(not _config_lines(BaselineProjectChecks.run(SCRATCH)).any(func(line: String) -> bool: return "C02" in line), "no voice, no Voice bus check")
 
 
 func test_action_bound_to_esc_fails_b10() -> void:

@@ -1,7 +1,8 @@
 extends SceneTree
 ## Prints the baseline's static Audit checks, one PASS, FAIL or MANUAL line
-## each, and exits with 1 when any check fails. MANUAL lines name items the
-## static checks cannot cover in this project; they do not affect the exit code.
+## each, and exits with 1 when any check fails. MANUAL lines name what must be
+## checked by hand (items the static checks cannot cover in this project, or a
+## config that still starts the demo); they do not affect the exit code.
 ## Usage: <redot> --headless --path <game> -s res://baseline/tools/check_project.gd
 ## On a fresh checkout, import once first (<redot> --headless --path <game> --import):
 ## the checks still run without the class cache, but the template's autoloads

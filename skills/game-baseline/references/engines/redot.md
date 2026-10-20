@@ -16,15 +16,18 @@ Run the template's tests on your engine version before relying on it.
    template's `project.godot`.
 3. **Export preset:** copy or merge the template's `Windows Desktop` preset from
    `export_presets.cfg`, then set your own `export_path`.
-4. **Edit `baseline/baseline_config.tres`:** game title, `game_scene_path`, `title_music_path`,
-   C01 (`enable_mouse_look`) and C02 (`enable_voice`), friendly action names, action order and
-   credits text.
+4. **Edit `baseline/baseline_config.tres`.** The shipped file is the demo's: it starts
+   `res://demo/demo_game.tscn`, plays the demo's music and turns on mouse-look and voice. You must
+   edit it: game title, `game_scene_path`, `title_music_path`, C01 (`enable_mouse_look`) and C02
+   (`enable_voice`), friendly action names, action order and credits text.
 5. **Set the main scene** to `res://baseline/ui/title_screen.tscn`.
 6. **Check:** import once (`<redot> --headless --path <game> --import`), then run
    `<redot> --headless --path <game> -s res://baseline/tools/check_project.gd`. It prints PASS or
-   FAIL per static check and exits 1 if anything fails. A project without the template's
-   autoloads gets one `MANUAL B05/B11/B13/B15` line instead: verify those items by hand with
-   [verification.md](../verification.md). MANUAL lines do not affect the exit code.
+   FAIL per static check and exits 1 if anything fails. It also checks that `game_scene_path`
+   loads and, when `enable_voice` is on, that the bus layout has a `Voice` bus. A project without
+   the template's autoloads gets one `MANUAL B05/B11/B13/B15` line instead: verify those items by
+   hand with [verification.md](../verification.md). A `game_scene_path` still under `res://demo/`
+   gets a `MANUAL General` line: point it at your game. MANUAL lines do not affect the exit code.
 
 Your gameplay scene's root must join the `baseline_gameplay` group
 (`add_to_group(BaselineFlow.GAMEPLAY_GROUP)`). That is how pause, Esc and focus-loss know gameplay
