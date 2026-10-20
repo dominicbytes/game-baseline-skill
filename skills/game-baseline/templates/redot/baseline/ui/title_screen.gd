@@ -55,12 +55,8 @@ func _ready() -> void:
 	_first_button.grab_focus.call_deferred()
 
 
-# Builds the Button itself: calling BaselineScreen.make_button from a script that
-# also names BaselineConfirm leaks scripts at exit in this engine build.
 func _add_button(parent: Control, text: String, on_pressed: Callable) -> Button:
-	var button := Button.new()
-	button.text = text
-	button.pressed.connect(on_pressed)
+	var button := BaselineScreen.make_button(text, on_pressed)
 	parent.add_child(button)
 	return button
 
