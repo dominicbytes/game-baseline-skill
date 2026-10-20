@@ -20,23 +20,23 @@ func _ready() -> void:
 	_fill_sizes()
 	_vsync = CheckButton.new()
 	_vsync.text = "VSync (reduces screen tearing)"
-	_vsync.toggled.connect(func(on: bool) -> void: BaselineSettings.set_value("display.vsync", on))
+	_vsync.toggled.connect(func(on: bool) -> void: BaselineSettings.set_value("game.display.vsync", on))
 	add_child(_vsync)
 	_fps = _add_picker("Frame rate limit", FPS_NAMES, _on_fps_selected)
 	var help := Label.new()
 	help.text = "On 120 Hz or faster screens, choose Match display for the smoothest motion."
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(help)
-	add_child(BaselineScreen.make_button("Reset display", BaselineSettings.reset_category.bind("display.")))
+	add_child(BaselineScreen.make_button("Reset display", BaselineSettings.reset_category.bind("game.display.")))
 	refresh()
 	BaselineSettings.changed.connect(_on_setting_changed)
 
 
 ## Reloads every control from BaselineSettings.
 func refresh() -> void:
-	var mode: String = BaselineSettings.get_value("display.window_mode")
+	var mode: String = BaselineSettings.get_value("game.display.window_mode")
 	_mode.select(maxi(BaselineSettings.WINDOW_MODES.find(mode), 0))
-	var size: Vector2i = BaselineSettings.get_value("display.window_size")
+	var size: Vector2i = BaselineSettings.get_value("game.display.window_size")
 	var index := _size_index(size)
 	if index < 0:
 		# A size saved on a bigger screen still shows what is stored.
@@ -44,8 +44,8 @@ func refresh() -> void:
 		index = _size.item_count - 1
 	_size.select(index)
 	_size.disabled = mode != "windowed"
-	_vsync.set_pressed_no_signal(BaselineSettings.get_value("display.vsync"))
-	_fps.select(maxi(BaselineSettings.FPS_CHOICES.find(BaselineSettings.get_value("display.max_fps")), 0))
+	_vsync.set_pressed_no_signal(BaselineSettings.get_value("game.display.vsync"))
+	_fps.select(maxi(BaselineSettings.FPS_CHOICES.find(BaselineSettings.get_value("game.display.frame_cap")), 0))
 
 
 ## The window size picker. Disabled unless the window mode is windowed.
@@ -96,17 +96,17 @@ func _size_index(size: Vector2i) -> int:
 
 
 func _on_mode_selected(index: int) -> void:
-	BaselineSettings.set_value("display.window_mode", BaselineSettings.WINDOW_MODES[index])
+	BaselineSettings.set_value("game.display.window_mode", BaselineSettings.WINDOW_MODES[index])
 
 
 func _on_size_selected(index: int) -> void:
-	BaselineSettings.set_value("display.window_size", _size.get_item_metadata(index))
+	BaselineSettings.set_value("game.display.window_size", _size.get_item_metadata(index))
 
 
 func _on_fps_selected(index: int) -> void:
-	BaselineSettings.set_value("display.max_fps", BaselineSettings.FPS_CHOICES[index])
+	BaselineSettings.set_value("game.display.frame_cap", BaselineSettings.FPS_CHOICES[index])
 
 
 func _on_setting_changed(key: String) -> void:
-	if key.begins_with("display."):
+	if key.begins_with("game.display."):
 		refresh()

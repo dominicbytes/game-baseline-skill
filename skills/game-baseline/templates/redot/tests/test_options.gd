@@ -45,10 +45,10 @@ func test_audio_slider_label_and_mute() -> void:
 func test_window_size_only_in_windowed_mode() -> void:
 	await _open("display")
 	var tab: BaselineOptionsDisplayTab = menu.current_tab()
-	BaselineSettings.set_value("display.window_mode", "fullscreen")
+	BaselineSettings.set_value("game.display.window_mode", "fullscreen")
 	await frames(1)
 	expect(tab.size_picker().disabled, "size disabled in fullscreen")
-	BaselineSettings.set_value("display.window_mode", "windowed")
+	BaselineSettings.set_value("game.display.window_mode", "windowed")
 	await frames(1)
 	expect(not tab.size_picker().disabled, "size enabled in windowed")
 

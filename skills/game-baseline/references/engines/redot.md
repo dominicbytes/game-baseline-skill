@@ -52,9 +52,9 @@ is running.
 
 | Item | Where |
 | --- | --- |
-| B01 | `BaselineSettings` keys `display.vsync`, `display.max_fps`; Display tab (`options_display_tab.gd`) |
+| B01 | `BaselineSettings` keys `game.display.vsync`, `game.display.frame_cap`; Display tab (`options_display_tab.gd`) |
 | B02 | `audio.master`, `audio.music`, `audio.sfx`; Audio tab; `BaselineMusic` fade-in; bus layout limiter |
-| B03 | `display.window_mode`, `display.window_size`; `BaselineSettings.default_window_size()` |
+| B03 | `game.display.window_mode`, `game.display.window_size`; `BaselineSettings.default_window_size()` |
 | B04 | No code: stable window behaviour from B12; verify with OBS |
 | B05 | `BaselineFlow.pause()` / `resume()`; `BaselineMusic.duck()`; pausable gameplay nodes |
 | B06 | Options button on `title_screen.gd` and `pause_menu.gd` |

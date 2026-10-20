@@ -5,15 +5,17 @@ lessons from prior Redot Game Jams: patterns seen across many reviewed entries, 
 
 Settings keys are shared with the
 [game-accessibility skill](https://github.com/dominicbytes/game-accessibility-skill) where the two
-overlap, so both skills can use one settings file. "See also" lines name that skill's items as
+overlap, so both skills can use one settings file. Keys that are not in that skill's registry
+(for example `game.display.window_size`) use the `game.` prefix so they never clash with a future
+registry key. "See also" lines name that skill's items as
 `accessibility <ID>` (for example accessibility C29), so they are never confused with this
 skill's own IDs such as C01 and C02.
 
 ## B01 Frame pacing
 
 **Requirement**
-- VSync is on by default (`display.vsync`).
-- The frame cap defaults to 60 and is never unlimited by default (`display.max_fps`). Offer 30, 60,
+- VSync is on by default (`game.display.vsync`).
+- The frame cap defaults to 60 and is never unlimited by default (`game.display.frame_cap`). Offer 30, 60,
   120, 144, Match display and Unlimited.
 - Explain in the menu that players on 120 Hz or faster screens should pick Match display: a 60 cap
   on a 144 Hz screen can judder.
@@ -46,9 +48,9 @@ started before the options menu was reachable made the first impression painful.
 
 **Requirement**
 - Window modes: Windowed, Fullscreen (borderless, desktop resolution) and Exclusive fullscreen
-  (`display.window_mode`).
+  (`game.display.window_mode`).
 - Window size presets that fit the current screen, only active in Windowed
-  (`display.window_size`). Fullscreen always uses the desktop resolution.
+  (`game.display.window_size`). Fullscreen always uses the desktop resolution.
 - The default window is readable: the largest preset within 85 % of the screen, centred on the
   primary monitor.
 - Menus and gameplay use one scaling rule, tested at 1280×720, 1366×768, 1920×1080 and an

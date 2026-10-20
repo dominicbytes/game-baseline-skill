@@ -9,7 +9,7 @@ const FORMAT_VERSION := 1
 
 ## Writes data to the slot. Returns OK or the error that stopped the write.
 static func save(data: Dictionary) -> Error:
-	return BaselineFile.write_text(PATH, JSON.stringify({"version": FORMAT_VERSION, "data": data}))
+	return BaselineFile.write_text(PATH, JSON.stringify({"version": FORMAT_VERSION, "data": data}), _is_valid)
 
 
 ## Returns the saved data, or {} when there is no usable save.

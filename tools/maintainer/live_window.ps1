@@ -72,7 +72,7 @@ switch ($Action) {
     "start" {
         $settingsDir = Join-Path $AppData "Redot\app_userdata\Baseline Demo"
         New-Item -ItemType Directory -Force -Path $settingsDir | Out-Null
-        @{ "display.window_mode" = $Mode } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $settingsDir "settings.json") -Encoding ASCII
+        @{ "game.display.window_mode" = $Mode } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $settingsDir "settings.json") -Encoding ASCII
         $saved = $env:APPDATA; $env:APPDATA = $AppData
         try { $p = Start-Process -FilePath $GameExe -PassThru } finally { $env:APPDATA = $saved }
         $deadline = (Get-Date).AddSeconds(20)

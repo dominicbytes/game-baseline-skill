@@ -99,7 +99,7 @@ func set_value(key: String, value: Variant) -> bool:
 	return true
 
 
-## Resets every key whose name starts with prefix, e.g. "audio." or "display.".
+## Resets every key whose name starts with prefix, e.g. "audio." or "game.display.".
 func reset_category(prefix: String) -> void:
 	for key: String in _keys:
 		if key.begins_with(prefix):
@@ -117,7 +117,7 @@ func flush() -> void:
 		var value: Variant = _values[key]
 		data[key] = [value.x, value.y] if value is Vector2i else _copy(value)
 	_stored = data.duplicate(true)
-	var error := BaselineFile.write_text(PATH, JSON.stringify(data, "\t"))
+	var error := BaselineFile.write_text(PATH, JSON.stringify(data, "\t"), _is_json_object)
 	if error != OK:
 		push_warning("BaselineSettings: could not save settings (%s)" % error_string(error))
 		return
@@ -196,11 +196,11 @@ func _register_builtin_keys() -> void:
 	if config.enable_voice:
 		register_key("audio.voice", 1.0, _validate_unit, _apply_bus.bind("Voice"))
 		register_key("subtitles.dialogue", true, _validate_bool)
-	register_key("display.window_mode", "windowed", _validate_window_mode, _apply_window_mode)
-	register_key("display.window_size", AUTO_WINDOW_SIZE, _validate_window_size, _apply_window_size)
-	register_key("display.vsync", true, _validate_bool, _apply_vsync)
-	# The owner requires a 60 FPS cap by default; Match display is offered for high-refresh screens.
-	register_key("display.max_fps", 60, _validate_fps, _apply_max_fps)
+	register_key("game.display.window_mode", "windowed", _validate_window_mode, _apply_window_mode)
+	register_key("game.display.window_size", AUTO_WINDOW_SIZE, _validate_window_size, _apply_window_size)
+	register_key("game.display.vsync", true, _validate_bool, _apply_vsync)
+	# B01: 60 FPS cap by default; Match display is offered for high-refresh screens.
+	register_key("game.display.frame_cap", 60, _validate_fps, _apply_max_fps)
 	register_key("game.input.bindings", _default_bindings.duplicate(true), _validate_bindings, BaselineBindings.apply)
 	if config.enable_mouse_look:
 		register_key("input.look_sensitivity", 1.0, _validate_sensitivity)
@@ -306,7 +306,7 @@ func _apply_window_mode(mode: String) -> void:
 			# A maximized or minimized window already counts as windowed.
 			if current == DisplayServer.WINDOW_MODE_FULLSCREEN or current == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
 				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-				_resize_window(_values.get("display.window_size", AUTO_WINDOW_SIZE))
+				_resize_window(_values.get("game.display.window_size", AUTO_WINDOW_SIZE))
 
 
 func _apply_window_size(size: Vector2i) -> void:

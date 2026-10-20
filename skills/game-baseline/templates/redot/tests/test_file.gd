@@ -42,6 +42,19 @@ func test_corrupt_main_falls_back_to_backup() -> void:
 	expect_eq(BaselineFile.read_text(PATH, _is_good), "good 1", "fallback")
 
 
+func test_corrupt_main_keeps_good_backup_on_write() -> void:
+	BaselineFile.write_text(PATH, "good 1", _is_good)
+	BaselineFile.write_text(PATH, "good 2", _is_good)
+	var file := FileAccess.open(PATH, FileAccess.WRITE)
+	file.store_string("garbage")
+	file.close()
+	expect_eq(BaselineFile.write_text(PATH, "good 3", _is_good), OK, "write")
+	expect_eq(FileAccess.get_file_as_string(PATH), "good 3", "main")
+	expect_eq(FileAccess.get_file_as_string(PATH + ".bak"), "good 1", "good backup kept")
+	BaselineFile.write_text(PATH, "good 4", _is_good)
+	expect_eq(FileAccess.get_file_as_string(PATH + ".bak"), "good 3", "valid main backed up again")
+
+
 func test_missing_and_corrupt_return_empty() -> void:
 	expect_eq(BaselineFile.read_text(PATH, _is_good), "", "missing")
 	var file := FileAccess.open(PATH, FileAccess.WRITE)

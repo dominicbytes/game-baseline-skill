@@ -115,7 +115,7 @@ $report = [ordered]@{ mode = $Mode; capture_audio = $CaptureAudio }
 $gameData = Join-Path $OutDir "appdata-$tag"
 $settingsDir = Join-Path $gameData "Redot\app_userdata\Baseline Demo"
 New-Item -ItemType Directory -Force -Path $settingsDir | Out-Null
-@{ "display.window_mode" = $Mode } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $settingsDir "settings.json") -Encoding ASCII
+@{ "game.display.window_mode" = $Mode } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $settingsDir "settings.json") -Encoding ASCII
 
 $obsBin = Join-Path $ObsDir "bin\64bit"
 $obs = Start-Process -FilePath (Join-Path $obsBin "obs64.exe") -WorkingDirectory $obsBin -PassThru -WindowStyle Minimized `
