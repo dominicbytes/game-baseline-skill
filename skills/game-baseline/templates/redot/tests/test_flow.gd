@@ -148,11 +148,49 @@ func test_pause_menu_return_to_title_needs_confirmation() -> void:
 	menu.find_button("Return to Title").pressed.emit()
 	await frames(2)
 	expect(BaselineFlow.top_screen() is BaselineConfirm, "confirmation shown")
-	(BaselineFlow.top_screen() as BaselineConfirm).answered.emit(false)
-	BaselineFlow.pop_screen()
+	(BaselineFlow.top_screen() as BaselineConfirm).find_button("Cancel").pressed.emit()
 	await frames(2)
 	expect(changes.is_empty(), "cancel keeps playing")
 	expect(get_tree().paused, "still paused")
+	expect(BaselineFlow.top_screen() is BaselinePauseMenu, "back on the pause menu")
+
+
+func test_pause_menu_return_to_title_confirmed() -> void:
+	_start_game()
+	await frames(2)
+	var changes: Array = []
+	BaselineFlow.change_scene_impl = func(path: String) -> void: changes.append(path)
+	BaselineFlow.pause()
+	await frames(2)
+	(BaselineFlow.top_screen() as BaselinePauseMenu).find_button("Return to Title").pressed.emit()
+	await frames(2)
+	var dialog := BaselineFlow.top_screen() as BaselineConfirm
+	expect(dialog != null, "confirmation shown")
+	if dialog == null:
+		return
+	dialog.find_button("Return to Title").pressed.emit()
+	await frames(2)
+	expect(not BaselineFlow.has_screens(), "screens cleared")
+	await get_tree().create_timer(BaselineFlow.FADE_TIME * 2.0 + 0.2, true).timeout
+	expect_eq(changes, [BaselineFlow.config.title_scene_path], "title scene requested")
+	expect(not get_tree().paused, "unpaused after the swap")
+
+
+func test_return_to_title_keeps_gameplay_frozen_during_the_fade() -> void:
+	_start_game()
+	await frames(2)
+	BaselineFlow.pause()
+	await frames(2)
+	var elapsed: float = game.elapsed
+	var at_swap: Array = []
+	BaselineFlow.change_scene_impl = func(path: String) -> void: at_swap.append([path, game.elapsed, get_tree().paused])
+	BaselineFlow.return_to_title()
+	await get_tree().create_timer(BaselineFlow.FADE_TIME * 0.5, true).timeout
+	expect(get_tree().paused, "still paused while fading out")
+	expect_eq(game.elapsed, elapsed, "gameplay frozen while fading out")
+	await get_tree().create_timer(BaselineFlow.FADE_TIME * 2.0, true).timeout
+	expect_eq(at_swap, [[BaselineFlow.config.title_scene_path, elapsed, false]], "unpaused right before the swap, gameplay frozen until then")
+	expect(not get_tree().paused, "unpaused after the swap")
 
 
 func test_parse_quit_after() -> void:

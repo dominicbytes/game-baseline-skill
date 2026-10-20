@@ -154,14 +154,14 @@ func has_screens() -> bool:
 	return not _screens.is_empty()
 
 
-## Fades to black, changes to the scene at path and fades back in.
+## Fades to black, unpauses, changes to the scene at path and fades back in.
 func change_scene(path: String) -> void:
 	if _transition != null:
 		_transition.kill()
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP
 	_transition = create_tween()
 	_transition.tween_property(_fade, "modulate:a", 1.0, FADE_TIME)
-	_transition.tween_callback(func() -> void: change_scene_impl.call(path))
+	_transition.tween_callback(_swap_scene.bind(path))
 	_transition.tween_property(_fade, "modulate:a", 0.0, FADE_TIME)
 	_transition.tween_callback(_end_transition)
 
@@ -177,11 +177,11 @@ func continue_game() -> void:
 	change_scene(config.game_scene_path)
 
 
-## Closes menus, unpauses and changes to the title scene.
+## Closes menus and changes to the title scene. Gameplay stays paused during
+## the fade out; the tree unpauses only when the scene changes.
 func return_to_title() -> void:
 	while not _screens.is_empty():
 		pop_screen()
-	get_tree().paused = false
 	_music.duck(false)
 	gameplay_mouse_mode = Input.MOUSE_MODE_VISIBLE
 	set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
@@ -281,6 +281,12 @@ func _notification(what: int) -> void:
 			set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		NOTIFICATION_WM_CLOSE_REQUEST:
 			quit_game()
+
+
+## Runs at full black: unpauses, so the new scene starts running, then swaps.
+func _swap_scene(path: String) -> void:
+	get_tree().paused = false
+	change_scene_impl.call(path)
 
 
 func _end_transition() -> void:
