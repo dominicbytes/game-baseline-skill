@@ -10,6 +10,8 @@ func _ready() -> void:
 	box.add_child(make_title("Paused"))
 	_resume = make_button("Resume", BaselineFlow.resume)
 	box.add_child(_resume)
+	box.add_child(make_button("Options", _on_options))
+	box.add_child(make_button("Controls", _on_controls))
 	box.add_child(make_button("Return to Title", _on_return_to_title))
 	box.add_child(make_button("Quit to Desktop", _on_quit))
 
@@ -22,6 +24,14 @@ func first_focus() -> Control:
 ## Esc resumes the game.
 func back() -> void:
 	BaselineFlow.resume()
+
+
+func _on_options() -> void:
+	BaselineFlow.push_screen(BaselineOptionsMenu.create())
+
+
+func _on_controls() -> void:
+	BaselineFlow.push_screen(BaselineOptionsMenu.create("controls"))
 
 
 func _on_return_to_title() -> void:

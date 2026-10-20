@@ -38,7 +38,6 @@ func _ready() -> void:
 	var new_game := _add_button(box, "New Game", _on_new_game)
 	if _first_button == null:
 		_first_button = new_game
-	# Options is connected when the options menu exists.
 	_add_button(box, "Options", _on_options)
 	_add_button(box, "Credits", _on_credits)
 	_add_button(box, "Quit", BaselineFlow.quit_game)
@@ -70,7 +69,7 @@ func _on_new_game() -> void:
 
 
 func _on_options() -> void:
-	pass
+	BaselineFlow.push_screen(BaselineOptionsMenu.create())
 
 
 func _on_credits() -> void:

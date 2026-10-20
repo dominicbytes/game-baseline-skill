@@ -14,6 +14,9 @@ extends Resource
 @export var enable_mouse_look: bool = false
 ## C02: the game has spoken dialogue or voice.
 @export var enable_voice: bool = false
+## Order of gameplay actions on the Controls tab. Actions missing from the
+## InputMap are skipped; actions not listed follow in project order.
+@export var action_order: PackedStringArray = []
 ## Friendly names for gameplay actions on the Controls tab, e.g. {"move_left": "Move left"}.
 @export var action_names: Dictionary = {}
 ## Credits text shown above the engine licence notice.

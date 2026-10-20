@@ -10,6 +10,7 @@ title_scene_path = "res://baseline/ui/title_screen.tscn"
 title_music_path = "res://demo/assets/music_loop.wav"
 enable_mouse_look = true
 enable_voice = true
+action_order = PackedStringArray("move_left", "move_right", "move_up", "move_down", "jump", "interact", "primary", "aim")
 action_names = {
 "interact": "Save at the save point",
 "move_down": "Move down",
