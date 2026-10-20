@@ -86,10 +86,11 @@ func test_quit_on_title_has_no_confirmation() -> void:
 
 func test_esc_on_title_does_nothing() -> void:
 	await _open_title()
-	var event := InputEventAction.new()
-	event.action = "ui_cancel"
-	event.pressed = true
-	Input.parse_input_event(event)
+	for pressed in [true, false]:
+		var event := InputEventAction.new()
+		event.action = "ui_cancel"
+		event.pressed = pressed
+		Input.parse_input_event(event)
 	await frames(2)
 	expect(not BaselineFlow.has_screens(), "no screen opened")
 	expect(not get_tree().paused, "not paused")

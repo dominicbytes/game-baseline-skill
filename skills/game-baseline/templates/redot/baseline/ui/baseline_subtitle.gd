@@ -1,6 +1,8 @@
 class_name BaselineSubtitle
 extends Label
-## One line of dialogue subtitles near the bottom of the screen.
+## One line of dialogue subtitles near the bottom of the screen. BaselineFlow
+## draws it below the menu screens. Its timer stops while the game is paused,
+## so a line is not missed behind the pause menu.
 
 var _timer: Timer
 
@@ -20,6 +22,7 @@ func _init() -> void:
 	hide()
 	_timer = Timer.new()
 	_timer.one_shot = true
+	_timer.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_timer.timeout.connect(hide_now)
 	add_child(_timer)
 

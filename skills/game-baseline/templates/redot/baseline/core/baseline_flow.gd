@@ -1,7 +1,8 @@
 extends Node
 ## Autoload BaselineFlow. Owns pause, focus-loss pause, scene changes, music,
 ## subtitles and the clean quit. Menu screens, Esc routing and focus restore
-## live in its BaselineScreenStack child; the screen functions here delegate.
+## live in its BaselineScreenStack child, and the scene-change fade in its
+## BaselineTransition child.
 
 ## Emitted after the game pauses (true) or resumes (false).
 signal paused_changed(is_paused: bool)
@@ -11,25 +12,15 @@ const FADE_TIME := 0.25
 ## Seconds quit_game waits after stopping sounds. The audio thread releases
 ## stopped playbacks a few frames later; quitting sooner leaks them.
 const QUIT_DRAIN_TIME := 0.25
-## User argument for bounded automated runs: `-- --baseline-quit-after=<seconds>`
-## quits through quit_game() after that many seconds, so sounds stop and drain
-## first. Prefer it over the engine's --quit-after, which skips quit_game() and
-## leaks any audio stream still playing at exit.
-const QUIT_AFTER_ARG := "--baseline-quit-after="
+## Canvas layer for subtitles, below the menu screens (BaselineScreenStack.LAYER).
+const SUBTITLE_LAYER := 90
 
 var config: BaselineConfig = preload("res://baseline/baseline_config.tres")
 ## Mouse mode gameplay wants while it runs, e.g. captured while aiming.
 var gameplay_mouse_mode := Input.MOUSE_MODE_VISIBLE
-## Last mouse mode requested here. Headless runs cannot read it back from Input.
-var requested_mouse_mode := Input.MOUSE_MODE_VISIBLE
-## Tests replace these so quitting and scene changes don't end the run.
-var quit_impl: Callable
-var change_scene_impl: Callable
 
 var _screens: BaselineScreenStack
-var _overlay_layer: CanvasLayer
-var _fade: ColorRect
-var _transition: Tween
+var _transition: BaselineTransition
 var _music: BaselineMusic
 var _subtitle: BaselineSubtitle
 var _quitting := false
@@ -42,23 +33,19 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().set_auto_accept_quit(false)
 	_reset_impls()
+	var subtitle_layer := CanvasLayer.new()
+	subtitle_layer.layer = SUBTITLE_LAYER
+	add_child(subtitle_layer)
+	_subtitle = BaselineSubtitle.new()
+	subtitle_layer.add_child(_subtitle)
 	_screens = BaselineScreenStack.new()
 	_screens.cancel_without_screen.connect(_on_cancel_without_screen)
 	add_child(_screens)
-	_overlay_layer = CanvasLayer.new()
-	_overlay_layer.layer = 110
-	add_child(_overlay_layer)
-	_subtitle = BaselineSubtitle.new()
-	_overlay_layer.add_child(_subtitle)
-	_fade = ColorRect.new()
-	_fade.color = Color.BLACK
-	_fade.modulate.a = 0.0
-	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay_layer.add_child(_fade)
+	_transition = BaselineTransition.new()
+	add_child(_transition)
 	_music = BaselineMusic.new()
 	add_child(_music)
-	BaselineFile.remove_stale_temp(BaselineSave.PATH)
+	BaselineSave.cleanup()
 	_setup_quit_after(OS.get_cmdline_user_args())
 
 
@@ -77,7 +64,7 @@ func is_paused() -> bool:
 ## True while a gameplay scene is current and no scene transition is running.
 func is_gameplay_active() -> bool:
 	var scene := get_tree().current_scene
-	return scene != null and scene.is_in_group(GAMEPLAY_GROUP) and _transition == null
+	return scene != null and scene.is_in_group(GAMEPLAY_GROUP) and not _transition.is_running()
 
 
 ## Pauses gameplay and opens the pause menu. Does nothing outside gameplay.
@@ -85,7 +72,7 @@ func pause(reason: String = "menu") -> void:
 	if is_paused() or _quitting:
 		return
 	if not is_gameplay_active():
-		if _transition != null and reason == "focus lost":
+		if _transition.is_running() and reason == "focus lost":
 			_pause_after_transition = true
 		return
 	get_tree().paused = true
@@ -148,14 +135,7 @@ func has_screens() -> bool:
 
 ## Fades to black, unpauses, changes to the scene at path and fades back in.
 func change_scene(path: String) -> void:
-	if _transition != null:
-		_transition.kill()
-	_fade.mouse_filter = Control.MOUSE_FILTER_STOP
-	_transition = create_tween()
-	_transition.tween_property(_fade, "modulate:a", 1.0, FADE_TIME)
-	_transition.tween_callback(_swap_scene.bind(path))
-	_transition.tween_property(_fade, "modulate:a", 0.0, FADE_TIME)
-	_transition.tween_callback(_end_transition)
+	_transition.play(FADE_TIME, _swap_scene.bind(path), _end_transition)
 
 
 ## Deletes the autosave and starts the game scene.
@@ -195,20 +175,10 @@ func stop_music() -> void:
 	_music.stop_music()
 
 
-## The music player, for tests and volume checks.
-func music_player() -> AudioStreamPlayer:
-	return _music
-
-
 ## Shows a subtitle line when the game has voice (C02) and subtitles are on.
 func show_subtitle(text: String, seconds: float = 3.0) -> void:
 	if config.enable_voice and BaselineSettings.get_value("subtitles.dialogue"):
 		_subtitle.show_line(text, seconds)
-
-
-## The subtitle label, for tests.
-func subtitle_label() -> Label:
-	return _subtitle
 
 
 ## Saves settings, stops every sound and quits. Used by Quit buttons and the window close button.
@@ -217,37 +187,16 @@ func quit_game() -> void:
 		return
 	_quitting = true
 	print("[baseline] quitting")
-	if _transition != null:
-		_transition.kill()
-		_transition = null
+	_transition.stop()
 	BaselineSettings.flush()
+	# Paused gameplay cannot start new sounds while the old ones drain.
+	get_tree().paused = true
 	for type in ["AudioStreamPlayer", "AudioStreamPlayer2D", "AudioStreamPlayer3D"]:
 		for player: Node in get_tree().root.find_children("*", type, true, false):
 			player.call("stop")
 			player.set("stream", null)
 	await get_tree().create_timer(QUIT_DRAIN_TIME, true, false, true).timeout
 	quit_impl.call()
-
-
-## Back to a clean state. Tests only.
-func reset_for_tests() -> void:
-	_screens.clear()
-	get_tree().paused = false
-	if _transition != null:
-		_transition.kill()
-		_transition = null
-	_fade.modulate.a = 0.0
-	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_quitting = false
-	_pause_after_transition = false
-	gameplay_mouse_mode = Input.MOUSE_MODE_VISIBLE
-	set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-	_music.stop_music()
-	_subtitle.hide_now()
-	if _quit_timer != null:
-		_quit_timer.queue_free()
-		_quit_timer = null
-	_reset_impls()
 
 
 ## Esc with no menu open pauses gameplay.
@@ -260,7 +209,7 @@ func _on_cancel_without_screen() -> void:
 func _notification(what: int) -> void:
 	match what:
 		NOTIFICATION_APPLICATION_FOCUS_OUT:
-			if is_gameplay_active() or _transition != null:
+			if is_gameplay_active() or _transition.is_running():
 				pause.call_deferred("focus lost")
 			set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		NOTIFICATION_WM_CLOSE_REQUEST:
@@ -274,42 +223,62 @@ func _swap_scene(path: String) -> void:
 
 
 func _end_transition() -> void:
-	_transition = null
-	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _pause_after_transition:
 		_pause_after_transition = false
 		pause("focus lost")
 
 
-## Seconds from a --baseline-quit-after=<seconds> user argument, or -1 when it
-## is absent or not a positive number.
-func _parse_quit_after(args: PackedStringArray) -> float:
-	for arg in args:
-		if arg.begins_with(QUIT_AFTER_ARG):
-			var text := arg.trim_prefix(QUIT_AFTER_ARG)
-			if text.is_valid_float() and text.to_float() > 0.0:
-				return text.to_float()
-	return -1.0
-
-
 ## Starts a timer that calls quit_game() when args ask for a bounded run.
 ## Returns the timer, or null when args have no valid --baseline-quit-after.
 func _setup_quit_after(args: PackedStringArray) -> Timer:
-	var seconds := _parse_quit_after(args)
+	var seconds := BaselineQuitAfter.parse(args)
 	if seconds < 0.0:
 		return null
 	if _quit_timer != null:
 		_quit_timer.queue_free()
-	_quit_timer = Timer.new()
-	_quit_timer.name = "QuitAfter"
-	_quit_timer.process_mode = Node.PROCESS_MODE_ALWAYS
-	_quit_timer.one_shot = true
-	_quit_timer.wait_time = seconds
-	_quit_timer.autostart = true
+	_quit_timer = BaselineQuitAfter.new(seconds)
 	_quit_timer.timeout.connect(quit_game)
 	add_child(_quit_timer)
-	print("[baseline] quitting after %s s (%s)" % [seconds, QUIT_AFTER_ARG.trim_suffix("=")])
+	print("[baseline] quitting after %s s (%s)" % [seconds, BaselineQuitAfter.ARG.trim_suffix("=")])
 	return _quit_timer
+
+
+# --- Test support ---
+
+## Test support: the last mouse mode requested here, since headless runs
+## cannot read it back from Input.
+var requested_mouse_mode := Input.MOUSE_MODE_VISIBLE
+## Test support: quits the game. Tests replace it so quitting doesn't end the run.
+var quit_impl: Callable
+## Test support: changes the scene. Tests replace it to record the path.
+var change_scene_impl: Callable
+
+
+## Test support: the music player, for volume checks.
+func music_player() -> AudioStreamPlayer:
+	return _music
+
+
+## Test support: the subtitle label.
+func subtitle_label() -> Label:
+	return _subtitle
+
+
+## Test support: back to a clean state between tests.
+func reset_for_tests() -> void:
+	_screens.clear()
+	get_tree().paused = false
+	_transition.stop(true)
+	_quitting = false
+	_pause_after_transition = false
+	gameplay_mouse_mode = Input.MOUSE_MODE_VISIBLE
+	set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	_music.stop_music()
+	_subtitle.hide_now()
+	if _quit_timer != null:
+		_quit_timer.queue_free()
+		_quit_timer = null
+	_reset_impls()
 
 
 func _reset_impls() -> void:

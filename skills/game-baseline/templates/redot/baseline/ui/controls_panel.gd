@@ -9,6 +9,7 @@ const BINDINGS_KEY := "game.input.bindings"
 const SLOTS := 2
 const EMPTY_SLOT := "—"
 const CAPTURE_TEXT := "Press a key or mouse button (Esc cancels)"
+const WHEEL_BUTTONS: Array[MouseButton] = [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]
 
 var _actions: Array[String] = []
 var _slot_buttons: Dictionary = {}
@@ -114,7 +115,11 @@ func _input(event: InputEvent) -> void:
 			return
 		binding = {"type": "key", "physical_keycode": int(key.physical_keycode)}
 	elif event is InputEventMouseButton:
-		binding = {"type": "mouse", "button_index": int((event as InputEventMouseButton).button_index)}
+		var button := event as InputEventMouseButton
+		# Wheel steps and the second press of a double-click are not deliberate bindings.
+		if button.double_click or button.button_index in WHEEL_BUTTONS:
+			return
+		binding = {"type": "mouse", "button_index": int(button.button_index)}
 	else:
 		return
 	get_viewport().set_input_as_handled()

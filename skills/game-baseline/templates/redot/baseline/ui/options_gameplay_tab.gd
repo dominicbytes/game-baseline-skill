@@ -66,7 +66,10 @@ func _add_sensitivity_row() -> void:
 
 
 func _reset() -> void:
-	for key: String in [SENSITIVITY_KEY, TOGGLES[0][0], TOGGLES[1][0], TOGGLES[2][0]]:
+	var keys: Array[String] = [SENSITIVITY_KEY]
+	for toggle: Array in TOGGLES:
+		keys.append(toggle[0])
+	for key in keys:
 		if BaselineSettings.has_key(key):
 			BaselineSettings.set_value(key, BaselineSettings.get_default(key))
 

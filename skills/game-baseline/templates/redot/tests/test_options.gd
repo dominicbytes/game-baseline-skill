@@ -104,6 +104,26 @@ func test_esc_cancels_capture_and_cannot_be_bound() -> void:
 	expect_eq(BaselineSettings.get_value("game.input.bindings"), before, "unchanged")
 
 
+func test_capture_ignores_wheel_and_double_click() -> void:
+	await _open("controls")
+	var panel: BaselineControlsPanel = menu.current_tab()
+	var before: Dictionary = BaselineSettings.get_value("game.input.bindings")
+	panel.slot_button("move_up", 0).pressed.emit()
+	await frames(1)
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	Input.parse_input_event(wheel)
+	var double := InputEventMouseButton.new()
+	double.button_index = MOUSE_BUTTON_MIDDLE
+	double.pressed = true
+	double.double_click = true
+	Input.parse_input_event(double)
+	await frames(2)
+	expect(panel.is_capturing(), "still waiting for a binding")
+	expect_eq(BaselineSettings.get_value("game.input.bindings"), before, "unchanged")
+
+
 func test_controls_follow_action_order() -> void:
 	await _open("controls")
 	var panel: BaselineControlsPanel = menu.current_tab()

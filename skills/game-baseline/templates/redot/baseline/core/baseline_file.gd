@@ -23,7 +23,8 @@ static func write_text(path: String, text: String) -> Error:
 	if FileAccess.file_exists(path):
 		var copy_error := DirAccess.copy_absolute(_absolute(path), _absolute(path + BACKUP_SUFFIX))
 		if copy_error != OK:
-			print("[baseline] could not back up %s (%s)" % [path, error_string(copy_error)])
+			# A real I/O fault, unlike a corrupt file, so it is reported.
+			push_warning("[baseline] could not back up %s (%s)" % [path, error_string(copy_error)])
 	return DirAccess.rename_absolute(_absolute(temp_path), _absolute(path))
 
 

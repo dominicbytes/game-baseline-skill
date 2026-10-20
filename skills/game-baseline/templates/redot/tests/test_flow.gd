@@ -93,10 +93,14 @@ func test_quit_flushes_settings_and_stops_audio() -> void:
 	_start_game()
 	await frames(2)
 	var quit_calls := [0]
-	BaselineFlow.quit_impl = func() -> void: quit_calls[0] += 1
+	var paused_at_quit: Array = []
+	BaselineFlow.quit_impl = func() -> void:
+		quit_calls[0] += 1
+		paused_at_quit.append(get_tree().paused)
 	BaselineSettings.set_value("audio.sfx", 0.33)
 	await BaselineFlow.quit_game()
 	expect_eq(quit_calls[0], 1, "quit called once")
+	expect_eq(paused_at_quit, [true], "gameplay paused while sounds drain")
 	expect(FileAccess.file_exists(BaselineSettings.PATH), "settings flushed before quit")
 	expect(game.loop_player.stream == null, "streams released")
 
@@ -118,6 +122,8 @@ func test_music_fades_in_from_silence() -> void:
 
 
 func test_subtitle_follows_setting() -> void:
+	if not BaselineFlow.config.enable_voice:
+		return
 	BaselineFlow.show_subtitle("Hello", 0.5)
 	expect(BaselineFlow.subtitle_label().visible, "shown when on")
 	BaselineSettings.set_value("subtitles.dialogue", false)
@@ -194,12 +200,12 @@ func test_return_to_title_keeps_gameplay_frozen_during_the_fade() -> void:
 
 
 func test_parse_quit_after() -> void:
-	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray()), -1.0, "absent")
-	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray(["--only=test_flow"])), -1.0, "other args only")
-	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray(["--baseline-quit-after=2"])), 2.0, "whole seconds")
-	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray(["--x", "--baseline-quit-after=0.5"])), 0.5, "fractions, among other args")
-	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray(["--baseline-quit-after=soon"])), -1.0, "not a number")
-	expect_eq(BaselineFlow._parse_quit_after(PackedStringArray(["--baseline-quit-after=0"])), -1.0, "zero")
+	expect_eq(BaselineQuitAfter.parse(PackedStringArray()), -1.0, "absent")
+	expect_eq(BaselineQuitAfter.parse(PackedStringArray(["--only=test_flow"])), -1.0, "other args only")
+	expect_eq(BaselineQuitAfter.parse(PackedStringArray(["--baseline-quit-after=2"])), 2.0, "whole seconds")
+	expect_eq(BaselineQuitAfter.parse(PackedStringArray(["--x", "--baseline-quit-after=0.5"])), 0.5, "fractions, among other args")
+	expect_eq(BaselineQuitAfter.parse(PackedStringArray(["--baseline-quit-after=soon"])), -1.0, "not a number")
+	expect_eq(BaselineQuitAfter.parse(PackedStringArray(["--baseline-quit-after=0"])), -1.0, "zero")
 
 
 func test_quit_after_starts_timer_that_runs_clean_quit() -> void:
@@ -249,3 +255,21 @@ func test_confirm_under_another_screen_answers_once_and_closes() -> void:
 	BaselineFlow.pop_screen()
 	await frames(2)
 	expect(not BaselineFlow.has_screens(), "nothing left on the stack")
+
+
+func test_subtitle_waits_while_paused_below_the_menus() -> void:
+	if not BaselineFlow.config.enable_voice:
+		return
+	_start_game()
+	await frames(2)
+	BaselineFlow.show_subtitle("Hello", 0.3)
+	BaselineFlow.pause()
+	await frames(2)
+	var subtitle_layer := BaselineFlow.subtitle_label().get_parent() as CanvasLayer
+	var screen_layer := BaselineFlow.top_screen().get_parent() as CanvasLayer
+	expect(subtitle_layer.layer < screen_layer.layer, "subtitle drawn below the menu screens")
+	await get_tree().create_timer(0.5, true).timeout
+	expect(BaselineFlow.subtitle_label().visible, "line kept while paused")
+	BaselineFlow.resume()
+	await get_tree().create_timer(0.5, true).timeout
+	expect(not BaselineFlow.subtitle_label().visible, "line hides once its time has run")

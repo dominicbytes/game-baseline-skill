@@ -25,6 +25,12 @@ static func has_save() -> bool:
 	return BaselineFile.read_text(PATH, _is_valid) != ""
 
 
+## Deletes a temp file left behind by a crash during a save. BaselineFlow
+## calls this at startup.
+static func cleanup() -> void:
+	BaselineFile.remove_stale_temp(PATH)
+
+
 ## Deletes the save, its backup and any temp file.
 static func delete() -> void:
 	BaselineFile.delete_all(PATH)
