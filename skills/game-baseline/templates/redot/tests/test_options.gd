@@ -142,3 +142,28 @@ func test_gameplay_tab_follows_settings_and_resets() -> void:
 	expect_eq(BaselineSettings.get_value("subtitles.dialogue"), true, "subtitles reset")
 	expect_eq(BaselineSettings.get_value("input.look_sensitivity"), 1.0, "sensitivity reset")
 	expect_eq(menu.find_button("Subtitles").button_pressed, true, "switch refreshed")
+
+
+func test_reset_controls_asks_first() -> void:
+	await _open("controls")
+	var bindings: Dictionary = BaselineSettings.get_value("game.input.bindings")
+	bindings["jump"] = [{"type": "key", "physical_keycode": KEY_J}]
+	BaselineSettings.set_value("game.input.bindings", bindings)
+	var custom: Dictionary = BaselineSettings.get_value("game.input.bindings")
+	expect(custom != BaselineSettings.get_default("game.input.bindings"), "jump customised")
+	menu.find_button("Reset controls").pressed.emit()
+	await frames(2)
+	var dialog := BaselineFlow.top_screen() as BaselineConfirm
+	expect(dialog != null, "reset asks first")
+	if dialog == null:
+		return
+	expect(dialog.find_button("Reset controls") != null, "confirm button names the action")
+	dialog.find_button("Cancel").pressed.emit()
+	await frames(2)
+	expect_eq(BaselineSettings.get_value("game.input.bindings"), custom, "cancel keeps the custom binding")
+	menu.find_button("Reset controls").pressed.emit()
+	await frames(2)
+	(BaselineFlow.top_screen() as BaselineConfirm).find_button("Reset controls").pressed.emit()
+	await frames(2)
+	expect_eq(BaselineSettings.get_value("game.input.bindings"), BaselineSettings.get_default("game.input.bindings"), "confirm restores defaults")
+	expect_eq(BaselineFlow.top_screen(), menu, "back on the options menu")

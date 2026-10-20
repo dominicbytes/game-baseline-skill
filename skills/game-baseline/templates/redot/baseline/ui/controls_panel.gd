@@ -2,7 +2,8 @@ class_name BaselineControlsPanel
 extends VBoxContainer
 ## Controls tab: two binding slots per gameplay action. Pressing a slot waits for
 ## the next key or mouse button; Esc cancels and can never be bound. A binding
-## used by another action asks before swapping the two.
+## used by another action asks before swapping the two. Reset controls asks
+## first, because custom bindings would be lost.
 
 const BINDINGS_KEY := "game.input.bindings"
 const SLOTS := 2
@@ -30,7 +31,7 @@ func _ready() -> void:
 	footer.text = "Esc is reserved for pause and menus. Menus always work with the arrow keys, Enter and Esc."
 	footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(footer)
-	add_child(BaselineScreen.make_button("Reset controls", BaselineSettings.reset_category.bind(BINDINGS_KEY)))
+	add_child(BaselineScreen.make_button("Reset controls", _on_reset))
 	refresh()
 	BaselineSettings.changed.connect(_on_setting_changed)
 
@@ -134,6 +135,11 @@ func _bind(binding: Dictionary) -> void:
 			return
 		bindings = BaselineSettings.get_value(BINDINGS_KEY)
 	BaselineSettings.set_value(BINDINGS_KEY, BaselineBindings.assign(bindings, action, slot, binding, other != ""))
+
+
+func _on_reset() -> void:
+	if await BaselineConfirm.ask("Reset every control to its default key?", "Reset controls").answered:
+		BaselineSettings.reset_category(BINDINGS_KEY)
 
 
 func _on_setting_changed(key: String) -> void:
