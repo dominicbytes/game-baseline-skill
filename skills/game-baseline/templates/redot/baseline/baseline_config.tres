@@ -12,7 +12,9 @@ enable_mouse_look = true
 enable_voice = true
 action_order = PackedStringArray("move_left", "move_right", "move_up", "move_down", "jump", "interact", "primary", "aim")
 action_names = {
+"aim": "Aim (hold)",
 "interact": "Save at the save point",
+"jump": "Jump",
 "move_down": "Move down",
 "move_left": "Move left",
 "move_right": "Move right",

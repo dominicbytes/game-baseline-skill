@@ -15,3 +15,9 @@ func test_gameplay_actions_exist_with_physical_keys() -> void:
 func test_default_labels() -> void:
 	expect_eq(BaselineInputLabels.action_label("move_up"), "W / Up Arrow", "move up")
 	expect_eq(BaselineInputLabels.action_label("primary"), "Left Mouse", "primary")
+
+
+func test_every_gameplay_action_has_a_friendly_name() -> void:
+	for action in BaselineBindings.gameplay_actions():
+		expect(BaselineFlow.config.action_names.has(action), "%s has a name in action_names" % action)
+	expect_eq(BaselineFlow.config.action_names.get("aim"), "Aim (hold)", "aim says it is held")
