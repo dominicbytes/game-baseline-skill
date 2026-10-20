@@ -91,7 +91,7 @@ func set_value(key: String, value: Variant) -> bool:
 		return false
 	if typeof(checked) == typeof(_values[key]) and checked == _values[key]:
 		return true
-	_values[key] = checked
+	_values[key] = _copy(checked)
 	_apply(key)
 	changed.emit(key)
 	_dirty = true

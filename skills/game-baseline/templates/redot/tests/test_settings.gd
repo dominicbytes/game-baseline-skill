@@ -59,6 +59,8 @@ func test_corrupt_values_fall_back_to_defaults() -> void:
 
 
 func test_unparseable_file_does_not_crash() -> void:
+	BaselineSettings.set_value("audio.master", 0.3)
+	BaselineSettings.flush()
 	BaselineFile.log_warnings = false
 	var file := FileAccess.open(BaselineSettings.PATH, FileAccess.WRITE)
 	file.store_string("{{{ not json")
