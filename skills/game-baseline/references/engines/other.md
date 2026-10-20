@@ -21,14 +21,14 @@ Redot 26.3.
 | B04 | Test with OBS; D3D11 and D3D12 builds hook normally |
 | B05 | `Time.timeScale = 0` plus pausing `AudioSource`s (or `AudioListener.pause`, then let music sources ignore it with `ignoreListenerPause`); unscaled time for menus |
 | B06 | Shared options prefab opened from both title and pause |
-| B07 | Windows standalone x86_64 build; ship the whole build folder zipped (Unity needs its `_Data` folder and `UnityPlayer.dll`) |
+| B07 | Windows standalone x86_64 build; ship the whole build folder zipped (Unity needs its `_Data` folder and `UnityPlayer.dll`, and the `_Data` folder must keep the exe's name) |
 | B08 | `EventSystem` with keyboard navigation and a selected-state style; `EventSystem.current.IsPointerOverGameObject()` before gameplay clicks |
 | B09 | Input System `PerformInteractiveRebinding()` with binding overrides saved as JSON (`SaveBindingOverridesAsJson`) |
 | B10 | Bind keys by physical location in the Input System (the default for keyboard controls); show `GetBindingDisplayString()` |
 | B11 | Quit button calls `Application.Quit()`; confirmation dialog; handle `Application.wantsToQuit` for close requests |
-| B12 | Your own settings class serialized to JSON in `Application.persistentDataPath`; validate on load |
-| B13 | `OnApplicationFocus(false)` → pause and `Cursor.lockState = CursorLockMode.None` |
-| B14 | Write to a temp file, then `File.Replace(temp, main, backup)` |
+| B12 | Your own settings class serialized to JSON in `Application.persistentDataPath`; validate on load. `PlayerPrefs` is fine for a few small settings, but a JSON file in `persistentDataPath` is easier to validate and back up |
+| B13 | `OnApplicationFocus(false)` or the `Application.focusChanged` event → pause and `Cursor.lockState = CursorLockMode.None` |
+| B14 | Write to a temp file, then `File.Replace(temp, main, backup)`. `File.Replace` throws when the main file does not exist yet, so on the first save use `File.Move(temp, main)` |
 | B15 | Stop coroutines and audio on quit; check `Player.log` |
 | B16 | Canvas Scaler plus Graphic Raycaster; test at several resolutions in the build |
 | B17 | `Application.version` on the title; `Player.log` in the persistent data folder |
@@ -45,17 +45,17 @@ Redot 26.3.
 | B04 | Test with OBS; D3D11 and D3D12 hook normally |
 | B05 | `UGameplayStatics::SetGamePaused`; audio components set to pause with the game; menus ticking while paused |
 | B06 | One options widget opened from both the main menu and the pause menu |
-| B07 | Shipping build for Win64, packaged in a single folder; prerequisites installer optional |
+| B07 | Shipping build for Win64, packaged in a single folder; zip the whole build folder, since the exe needs the folders beside it; prerequisites installer optional |
 | B08 | UMG focus navigation and focus brushes; `bShowMouseCursor` handling; Common UI input routing |
 | B09 | Enhanced Input user settings (player-mappable keys) saved with the user settings |
 | B10 | Default mappings in the Input Mapping Context; show key display names from the current mapping |
 | B11 | `UKismetSystemLibrary::QuitGame`; confirmation widget |
 | B12 | `UGameUserSettings` subclass for custom settings; validate after load |
-| B13 | `FCoreDelegates::ApplicationWillDeactivateDelegate` (or the viewport focus events) → pause and show the cursor |
+| B13 | `FSlateApplication::Get().OnApplicationActivationStateChanged()` (fires when the desktop window gains or loses focus) → pause and show the cursor |
 | B14 | `USaveGame` with `AsyncSaveGameToSlot`; keep a second slot as backup |
-| B15 | Check `Saved/Logs` after quitting from each screen |
+| B15 | Check `Saved/Logs` after quitting from each screen. Shipping builds compile logging out unless the game's `Target.cs` sets `bUseLoggingInShipping = true`, so test a Development build or set it |
 | B16 | UMG DPI scaling; test in a packaged build |
-| B17 | Project version in the title widget; logs in `Saved/Logs` |
+| B17 | Project version in the title widget; logs in `Saved/Logs`. Shipping builds write no log unless the game's `Target.cs` sets `bUseLoggingInShipping = true` |
 | C01 | Sensitivity and invert modifiers on the look input action |
 | C02 | Voice Sound Class; subtitles through dialogue waves or your own widget |
 

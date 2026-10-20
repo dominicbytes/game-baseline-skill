@@ -69,11 +69,11 @@ Must-haves (every desktop game):
 | B04 | Streaming capture | OBS Game Capture shows the game and "Capture audio" picks up its sound; the game never resizes itself mid-session. |
 | B05 | Pause | Pause stops gameplay, physics, timers, animations, transitions and gameplay sounds; menus keep working; resume continues exactly. |
 | B06 | Options access | Options reachable from the title and from pause; opening options never loses progress. |
-| B07 | Standalone Windows build | Runs on Windows 10 x64 from a freshly extracted zip; data embedded; no console window; no installer or admin rights. |
+| B07 | Standalone Windows build | Runs on Windows 10 x64 from a freshly extracted zip; the build is self-contained: the zipped folder runs as-is, with no loose data file that must keep a matching name; no console window; no installer or admin rights. |
 | B08 | Keyboard and mouse | Keyboard and mouse can finish the whole game and every menu; visible keyboard focus; UI clicks never also trigger gameplay. |
 | B09 | Remapping | Every gameplay action remappable to keys and mouse buttons, with conflict handling and reset; every prompt shows the live binding. |
 | B10 | Default keys and labels | Conventional defaults bound by physical key position; plain labels such as "Left Mouse" and "Space". |
-| B11 | Quit and back | Quit to Desktop on title and pause; confirm anything that loses progress; Esc backs out one level and never dumps to the title. |
+| B11 | Quit and back | Quit to Desktop on title and pause; confirm anything that loses progress (quit from the title does not ask); Esc backs out one level and never dumps to the title. |
 | B12 | Settings integrity | Each setting changes only itself; settings saved, validated and applied at startup; reset per category. |
 | B13 | Focus loss | Alt-tab or losing focus pauses gameplay and releases the mouse cursor. |
 | B14 | Saving | Autosave; crash-safe writes with a backup; a corrupt save never crashes the game. |
@@ -97,6 +97,15 @@ seen).
 - Never mark an item pass from reading code alone.
 - "Blocked" names the missing prerequisite (for example "no second monitor to test B03 placement").
 - A finished report lists every item, not only the ones that passed.
+
+Report format: one Markdown table row per item, in checklist order, conditional items included
+(n/a with the reason when they do not apply).
+
+```markdown
+| ID | Item | Status | Evidence |
+| --- | --- | --- | --- |
+| B01 | Frame pacing | pass | Fresh user data: options show VSync on and cap 60; 10 s scripted walk covered the same distance at 30 and Unlimited. |
+```
 
 ## Red flags
 

@@ -35,8 +35,10 @@ REDOT_BIN=<redot editor executable> tests/run_redot_tests.sh
 REDOT_BIN=<redot editor executable> tests/run_redot_tests.sh --only=test_flow
 ```
 
-Static project checks for any project that uses the template:
+Static project checks for any project that uses the template. Import once first, so the class
+cache exists and the template's autoloads parse:
 
 ```bash
+<redot> --headless --path <game> --import
 <redot> --headless --path <game> -s res://baseline/tools/check_project.gd
 ```

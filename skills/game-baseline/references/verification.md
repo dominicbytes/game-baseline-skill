@@ -43,12 +43,17 @@ Use any OBS Studio install (a portable copy keeps test settings away from a real
 2. Add a **Game Capture** source: mode "Capture specific window", the game's window, and enable
    **Capture audio**.
 3. Run the game windowed with sound. The preview shows the game moving; the Game Capture source's
-   audio meter moves.
-4. Record 10-15 seconds. Play it back: picture and game sound present.
+   audio meter peaks above -60 dBFS while the game plays.
+4. Record 10-15 seconds. Play it back: picture and game sound present. Measure the recording's
+   mean volume (for example `ffmpeg -i <recording> -af volumedetect -f null -`): it must be above
+   -60 dB.
 5. Repeat in fullscreen.
-6. Control check: disable "Capture audio" and record again. The recording must be silent, which
-   proves the sound came from the game capture.
+6. Control check: disable "Capture audio" and record again. The recording must be silent, with a
+   mean volume below -80 dB, which proves the sound came from the game capture.
 7. Note the window size and position before and after OBS hooks the game: they must not change.
+
+Pass needs all three thresholds: meter peak above -60 dBFS, recording mean above -60 dB, control
+recording mean below -80 dB.
 
 If Game Capture shows black, record which renderer the game uses and try the engine's other
 desktop renderers; note which work in the engine guide.
@@ -69,13 +74,14 @@ desktop renderers; note which work in the engine guide.
 
 ## B07 Standalone Windows build
 
-1. Export a release build for Windows x86_64 with the data embedded and no console wrapper.
+1. Export a self-contained release build for Windows x86_64 with no console wrapper (see the
+   engine guide for how; Redot embeds the PCK in the exe).
 2. Zip it. Copy the zip to a different PC or folder; extract into a new folder whose name contains
    a space and a non-ASCII character (for example `Test Build é`).
 3. Launch from Explorer by double-click. Windows SmartScreen may warn about an unsigned executable;
    note it. The game starts with no console window and no missing-file error.
-4. Check the build folder contains only the executable (and any engine libraries the engine
-   requires), not a loose data file.
+4. Check the build is self-contained: the zipped folder runs as-is, with no loose data file that
+   must keep a matching name, and nothing outside the folder is needed.
 
 ## B08 Keyboard and mouse
 
@@ -102,8 +108,8 @@ desktop renderers; note which work in the engine guide.
 
 ## B11 Quit and back
 
-1. Title: Quit exits immediately (nothing to lose). Esc does nothing.
-2. Gameplay: Esc opens pause. Return to Title and Quit to Desktop ask first, naming what is lost;
+1. Title: Quit to Desktop exits at once without asking (nothing to lose). Esc does nothing.
+2. Gameplay: Esc opens pause. Quit to Desktop and Return to Title ask first, naming what is lost;
    Cancel is focused; Esc answers Cancel.
 3. New Game with an existing save asks before overwriting.
 4. Close the window with its close button and with Alt+F4: the game quits cleanly with no dialog.

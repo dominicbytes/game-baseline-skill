@@ -5,7 +5,9 @@ lessons from prior Redot Game Jams: patterns seen across many reviewed entries, 
 
 Settings keys are shared with the
 [game-accessibility skill](https://github.com/dominicbytes/game-accessibility-skill) where the two
-overlap, so both skills can use one settings file.
+overlap, so both skills can use one settings file. "See also" lines name that skill's items as
+`accessibility <ID>` (for example accessibility C29), so they are never confused with this
+skill's own IDs such as C01 and C02.
 
 ## B01 Frame pacing
 
@@ -37,7 +39,7 @@ the player's monitor.
 entries. Reviewers reached for their own volume knob before they could play, and music that
 started before the options menu was reachable made the first impression painful.
 
-**Accessibility skill:** H01 master volume.
+**See also:** accessibility H01 (master volume).
 **Verify:** [verification.md#b02-volume](verification.md#b02-volume)
 
 ## B03 Display
@@ -83,7 +85,7 @@ resized themselves mid-session or could not be captured cleanly made that harder
 needed to step away or change a setting. A countdown that kept running during a tutorial ended
 one run before it started.
 
-**Accessibility skill:** D27 pause gameplay and cinematics.
+**See also:** accessibility D27 (pause gameplay and cinematics).
 **Verify:** [verification.md#b05-pause](verification.md#b05-pause)
 
 ## B06 Options access
@@ -103,7 +105,8 @@ level.
 **Requirement**
 - A Windows 10 x64 build runs from a freshly extracted zip in a new folder, including a folder name
   with spaces or non-ASCII characters.
-- Game data is embedded in the executable (no loose data file that must keep a matching name).
+- The build is self-contained: the zipped folder runs as-is, with no loose data file that must
+  keep a matching name.
 - No console window opens. No installer or admin rights are needed.
 - Other platforms are optional extras; Windows desktop is the baseline.
 
@@ -125,7 +128,7 @@ setup.
 reviewed at all. Others had menus that only worked by mouse, or a HUD click that also fired the
 player's weapon.
 
-**Accessibility skill:** V32 persistent focus appearance.
+**See also:** accessibility V32 (persistent focus appearance).
 **Verify:** [verification.md#b08-keyboard-and-mouse](verification.md#b08-keyboard-and-mouse)
 
 ## B09 Remapping
@@ -140,7 +143,7 @@ player's weapon.
 **Why:** remapping materially improved reviewers' first impressions when it existed, but partial
 remapping hurt: mouse buttons that could not be bound, and tutorials that kept showing the old key.
 
-**Accessibility skill:** M01 full action remapping.
+**See also:** accessibility M01 (full action remapping).
 **Verify:** [verification.md#b09-remapping](verification.md#b09-remapping)
 
 ## B10 Default keys and labels
@@ -161,8 +164,9 @@ labels like "Left" (arrow key or mouse button?) sent reviewers guessing.
 
 **Requirement**
 - Quit to Desktop on the title screen and in the pause menu.
-- Return to Title, Quit and starting a New Game over a save ask for confirmation and say what will
+- Quit from pause, Return to Title and New Game over a save ask for confirmation and say what will
   be lost. Focus starts on Cancel.
+- Quit from the title screen has nothing to lose, so it quits without asking.
 - Esc backs out one menu level, opens pause during gameplay, and does nothing on the title screen.
   It never drops the player to the title.
 - Closing the window (close button or Alt+F4) quits cleanly without a dialog.
@@ -170,7 +174,7 @@ labels like "Left" (arrow key or mouse button?) sent reviewers guessing.
 **Why:** reviewers closed jam entries with Alt+F4 because there was no way out, and lost progress
 when Esc went straight to the title.
 
-**Accessibility skill:** C29 destructive-action confirmation.
+**See also:** accessibility C29 (destructive-action confirmation).
 **Verify:** [verification.md#b11-quit-and-back](verification.md#b11-quit-and-back)
 
 ## B12 Settings integrity
@@ -184,7 +188,7 @@ when Esc went straight to the title.
 **Why:** a jam entry's window shrank mid-stream when a display toggle reapplied the whole display
 state. Settings that reset on every launch made players redo them each time.
 
-**Accessibility skill:** L02 persist preferences, C30 per-category reset.
+**See also:** accessibility L02 (persist preferences), accessibility C30 (per-category reset).
 **Verify:** [verification.md#b12-settings-integrity](verification.md#b12-settings-integrity)
 
 ## B13 Focus loss
@@ -218,7 +222,9 @@ entry its ranking.
 - Quitting from any screen, by Quit button or by closing the window, saves pending settings, stops
   sound and exits without errors or leaked-resource warnings in the log.
 
-**Why:** errors at exit hide real problems in logs and can corrupt files that were being written.
+**Why:** a lesson from prior Redot Game Jam projects in general: errors at exit hid real problems,
+and leaked resources showed up in jam projects' logs. A messy exit can also corrupt files that were
+being written.
 
 **Verify:** [verification.md#b15-clean-quit](verification.md#b15-clean-quit)
 
@@ -239,7 +245,8 @@ input scaling and drawing scaling disagreed.
 - The version number is visible on the title screen.
 - Release builds write a log file to user data.
 
-**Why:** without a version and a log, a bug report cannot be matched to a build or diagnosed.
+**Why:** a lesson from prior Redot Game Jam projects in general: reviews and bug reports could not
+be matched to the exact build a player ran, and without a log the problem could not be diagnosed.
 
 **Verify:** [verification.md#b17-version-and-log](verification.md#b17-version-and-log)
 
@@ -254,7 +261,7 @@ input scaling and drawing scaling disagreed.
 **Why:** default sensitivity made some reviewed jam entries unplayable and made reviewers
 motion-sick, with no way to change it.
 
-**Accessibility skill:** M07 independent X/Y inversion.
+**See also:** accessibility M07 (independent X/Y inversion).
 **Verify:** [verification.md#c01-mouse-look](verification.md#c01-mouse-look)
 
 ## C02 Voice (conditional)
@@ -265,6 +272,9 @@ motion-sick, with no way to change it.
 - Voice volume slider on its own bus (`audio.voice`, default 100 %).
 - Subtitles on by default (`subtitles.dialogue`), drawn below menus and paused with the game.
 
-**Accessibility skill:** H17 dialogue subtitles (and its subtitle size, background and speaker
-options for depth).
+**Why:** a lesson from prior Redot Game Jams: voice lines shipped without subtitles or a volume of
+their own, so a line lost under music or effects could not be followed or turned up.
+
+**See also:** accessibility H17 (dialogue subtitles), and its subtitle size, background and
+speaker options for depth.
 **Verify:** [verification.md#c02-voice](verification.md#c02-voice)
