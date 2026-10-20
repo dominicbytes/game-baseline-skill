@@ -21,7 +21,7 @@ static func build() -> Theme:
 	for type in ["Button", "OptionButton", "CheckButton", "CheckBox", "HSlider", "ScrollContainer"]:
 		theme.set_stylebox("focus", type, focus)
 	var panel := StyleBoxFlat.new()
-	panel.bg_color = Color(0.08, 0.09, 0.12, 0.96)
+	panel.bg_color = Color(0.08, 0.09, 0.12, 1.0)  # opaque: nothing behind a panel shows through
 	panel.set_corner_radius_all(8)
 	panel.set_content_margin_all(24)
 	theme.set_stylebox("panel", "PanelContainer", panel)
