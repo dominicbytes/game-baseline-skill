@@ -215,3 +215,37 @@ func test_quit_after_starts_timer_that_runs_clean_quit() -> void:
 	get_tree().paused = true
 	await get_tree().create_timer(0.1 + BaselineFlow.QUIT_DRAIN_TIME + 0.2, true, false, true).timeout
 	expect_eq(quit_calls[0], 1, "timer quits through quit_game")
+
+
+func test_screen_freed_directly_leaves_the_stack() -> void:
+	_start_game()
+	await frames(2)
+	var screen := BaselineCreditsScreen.new()
+	BaselineFlow.push_screen(screen)
+	await frames(2)
+	screen.queue_free()
+	await frames(2)
+	expect(not BaselineFlow.has_screens(), "freed screen left the stack")
+	await _tap("ui_cancel")
+	expect(get_tree().paused, "Esc still pauses gameplay")
+	expect(BaselineFlow.top_screen() is BaselinePauseMenu, "pause menu shown")
+
+
+func test_confirm_under_another_screen_answers_once_and_closes() -> void:
+	var dialog := BaselineConfirm.ask("Quit?", "Quit")
+	await frames(2)
+	var above := BaselineCreditsScreen.new()
+	BaselineFlow.push_screen(above)
+	await frames(2)
+	var answers: Array = []
+	dialog.answered.connect(func(ok: bool) -> void: answers.append(ok))
+	var cancel := dialog.find_button("Cancel")
+	cancel.pressed.emit()
+	cancel.pressed.emit()
+	await frames(2)
+	expect_eq(answers, [false], "answered exactly once")
+	expect(not is_instance_valid(dialog), "dialog closed")
+	expect_eq(BaselineFlow.top_screen(), above, "screen above stays open")
+	BaselineFlow.pop_screen()
+	await frames(2)
+	expect(not BaselineFlow.has_screens(), "nothing left on the stack")

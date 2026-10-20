@@ -10,6 +10,7 @@ var _message := ""
 var _confirm_text := ""
 var _cancel_text := ""
 var _cancel: Button
+var _answered := false
 
 
 ## Pushes a new dialog onto BaselineFlow's screen stack and returns it.
@@ -50,6 +51,10 @@ func back() -> void:
 	_answer(false)
 
 
+## Answers once, then closes, even when another screen is above this one.
 func _answer(confirmed: bool) -> void:
-	BaselineFlow.pop_screen(self)
+	if _answered:
+		return
+	_answered = true
+	BaselineFlow.remove_screen(self)
 	answered.emit(confirmed)
